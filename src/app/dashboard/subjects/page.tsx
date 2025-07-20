@@ -91,10 +91,8 @@ export default function SubjectsPage({
   searchParams: SearchParams 
 }) {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Suspense fallback={<SubjectListSkeleton />}>
-        <SubjectsPageContent searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<SubjectListSkeleton />}>
+      <SubjectsPageContent searchParams={searchParams} />
+    </Suspense>
   );
 } 

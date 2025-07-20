@@ -1,14 +1,41 @@
 "use client";
 
 import React from "react";
-import { LucideIcon } from "lucide-react";
+import { 
+  Users, 
+  BookOpen, 
+  Calendar, 
+  TrendingUp, 
+  UserPlus,
+  Settings,
+  BarChart3,
+  Plus,
+  Eye,
+  GraduationCap
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Map of icon names to icon components
+const iconMap = {
+  Users,
+  BookOpen,
+  Calendar,
+  TrendingUp,
+  UserPlus,
+  Settings,
+  BarChart3,
+  Plus,
+  Eye,
+  GraduationCap
+} as const;
+
+type IconName = keyof typeof iconMap;
 
 interface StatCardProps {
   title: string;
   value: string | number;
   description?: string;
-  icon?: LucideIcon;
+  iconName?: IconName;
   gradient?: boolean;
   color?: "primary" | "success" | "warning" | "error";
 }
@@ -17,7 +44,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
   description,
-  icon: Icon,
+  iconName,
   gradient = false,
   color = "primary",
 }) => {
@@ -25,6 +52,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   const textColor = gradient ? "text-white" : "text-foreground";
   const iconColor = gradient ? "text-white/80" : "text-primary";
   const descriptionColor = gradient ? "text-white/70" : "text-muted-foreground";
+
+  const Icon = iconName ? iconMap[iconName] : null;
 
   return (
     <div className={cn(cardClass, "p-6")}>

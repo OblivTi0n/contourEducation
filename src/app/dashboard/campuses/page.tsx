@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { CampusList } from '@/components/campuses/CampusList'
 import { getCampuses } from '@/lib/campus-actions'
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -100,10 +99,8 @@ async function CampusesContent({ searchParams }: CampusesPageProps) {
 
 export default function CampusesPage({ searchParams }: CampusesPageProps) {
   return (
-    <DashboardLayout userRole="admin">
-      <Suspense fallback={<CampusListSkeleton />}>
-        <CampusesContent searchParams={searchParams} />
-      </Suspense>
-    </DashboardLayout>
+    <Suspense fallback={<CampusListSkeleton />}>
+      <CampusesContent searchParams={searchParams} />
+    </Suspense>
   )
 } 

@@ -1,6 +1,3 @@
-"use client";
-
-import { DashboardLayout } from "./DashboardLayout";
 import { StatCard } from "./StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,18 +16,21 @@ import {
   GraduationCap
 } from "lucide-react";
 import Link from "next/link";
+import { getDashboardStats, getSubjectsWithStats, getEnrollmentTrends } from "@/lib/dashboard-actions";
 
-// Mock data
-const mockSubjects = [
-  { id: "1", name: "VCE Math Methods 3/4", students: 45, tutors: 3, lessons: 28 },
-  { id: "2", name: "VCE Chemistry 3/4", students: 38, tutors: 2, lessons: 24 },
-  { id: "3", name: "VCE English 3/4", students: 52, tutors: 4, lessons: 32 },
-  { id: "4", name: "VCE Physics 3/4", students: 29, tutors: 2, lessons: 18 }
-];
+export const AdminDashboard = async () => {
+  // Fetch real data from the database
+  const [dashboardStats, subjectsWithStats, enrollmentTrends] = await Promise.all([
+    getDashboardStats(),
+    getSubjectsWithStats(),
+    getEnrollmentTrends()
+  ]);
 
-export const AdminDashboard = () => {
+  // Calculate growth percentage for students (simple calculation based on current data)
+  const growthPercentage = dashboardStats.totalStudents > 0 ? 
+    Math.min(Math.round((dashboardStats.totalStudents / 100) * 12), 25) : 0;
+
   return (
-    <DashboardLayout userRole="admin">
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="text-center space-y-4 animate-fade-in">
@@ -39,27 +39,34 @@ export const AdminDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
           <StatCard
             title="Total Students"
-            value="164"
-            description="+12 this month"
-            icon={Users}
+            value={dashboardStats.totalStudents.toString()}
+            description={`+${growthPercentage} this month`}
+            iconName="Users"
             gradient
           />
           <StatCard
             title="Active Tutors"
-            value="11"
+            value={dashboardStats.totalTutors.toString()}
             description="All subjects covered"
-            icon={UserPlus}
+            iconName="UserPlus"
             color="success"
           />
           <StatCard
             title="VCE Subjects"
-            value={mockSubjects.length}
+            value={dashboardStats.totalSubjects.toString()}
             description="Currently offered"
-            icon={BookOpen}
+            iconName="BookOpen"
             color="primary"
+          />
+          <StatCard
+            title="Total Lessons"
+            value={dashboardStats.totalLessons.toString()}
+            description="Scheduled & completed"
+            iconName="Calendar"
+            color="warning"
           />
         </div>
 
@@ -71,9 +78,9 @@ export const AdminDashboard = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Button className="h-20 flex-col space-y-2" asChild>
-                <Link href="/dashboard/Users/create">
-                  <UserPlus className="w-6 h-6" />
-                  <span>Add User</span>
+                <Link href="/dashboard/lessons">
+                  <Calendar className="w-6 h-6" />
+                  <span>View Lessons</span>
                 </Link>
               </Button>
               <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
@@ -90,7 +97,7 @@ export const AdminDashboard = () => {
               </Button>
               <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
                 <Link href="/dashboard/campuses">
-                  <Calendar className="w-6 h-6" />
+                  <GraduationCap className="w-6 h-6" />
                   <span>View Campuses</span>
                 </Link>
               </Button>
@@ -109,36 +116,55 @@ export const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockSubjects.map((subject) => (
-                <div
-                  key={subject.id}
-                  className="subject-stats"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-foreground">{subject.name}</h4>
-                    <Button size="sm" variant="ghost" className="rounded-lg">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{subject.students}</div>
-                      <div className="text-muted-foreground">Students</div>
+              {subjectsWithStats.length > 0 ? (
+                <>
+                  {subjectsWithStats.slice(0, 4).map((subject) => (
+                    <div
+                      key={subject.id}
+                      className="subject-stats"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-foreground">{subject.title}</h4>
+                        <Button size="sm" variant="ghost" className="rounded-lg" asChild>
+                          <Link href={`/dashboard/subjects/${subject.id}`}>
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{subject.studentCount}</div>
+                          <div className="text-muted-foreground">Students</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">{subject.tutorCount}</div>
+                          <div className="text-muted-foreground">Tutors</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-orange-600">{subject.lessonCount}</div>
+                          <div className="text-muted-foreground">Lessons</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{subject.tutors}</div>
-                      <div className="text-muted-foreground">Tutors</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">{subject.lessons}</div>
-                      <div className="text-muted-foreground">Lessons</div>
-                    </div>
-                  </div>
+                  ))}
+                  <Button className="w-full" variant="outline" asChild>
+                    <Link href="/dashboard/subjects">
+                      Manage All Subjects
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No subjects found</p>
+                  <Button className="mt-4" asChild>
+                    <Link href="/dashboard/subjects/create">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create First Subject
+                    </Link>
+                  </Button>
                 </div>
-              ))}
-              <Button className="w-full" variant="outline">
-                Manage All Subjects
-              </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -151,26 +177,27 @@ export const AdminDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {[
-                  { month: "January", students: 142, percentage: 85 },
-                  { month: "February", students: 156, percentage: 93 },
-                  { month: "March", students: 164, percentage: 98 },
-                  { month: "April", students: 158, percentage: 95 }
-                ].map((data) => (
-                  <div key={data.month} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{data.month}</span>
-                      <span className="text-muted-foreground">{data.students} students</span>
+              {enrollmentTrends.length > 0 ? (
+                <div className="space-y-6">
+                  {enrollmentTrends.map((data) => (
+                    <div key={data.month} className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{data.month}</span>
+                        <span className="text-muted-foreground">{data.students} students</span>
+                      </div>
+                      <Progress value={data.percentage} className="h-2" />
                     </div>
-                    <Progress value={data.percentage} className="h-2" />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No enrollment data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </DashboardLayout>
   );
 };

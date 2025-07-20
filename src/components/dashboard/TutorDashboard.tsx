@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardLayout } from "./DashboardLayout";
 import { StatCard } from "./StatCard";
 import { UpcomingLessons } from "./UpcomingLessons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,8 +54,7 @@ const mockStudents = [
 
 export const TutorDashboard = () => {
   return (
-    <DashboardLayout userRole="tutor">
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Welcome Section */}
         <div className="text-center space-y-4 animate-fade-in">
           <h1 className="text-4xl font-bold text-foreground">Welcome back, Tutor!</h1>
@@ -185,6 +183,5 @@ export const TutorDashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }; 

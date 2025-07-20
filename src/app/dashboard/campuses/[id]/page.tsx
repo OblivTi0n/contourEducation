@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { getCampusById } from '@/lib/campus-actions'
 import {
   Building,
@@ -86,8 +85,7 @@ export default async function CampusDetailPage({ params }: CampusDetailPageProps
     };
 
     return (
-      <DashboardLayout userRole="admin">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -196,7 +194,6 @@ export default async function CampusDetailPage({ params }: CampusDetailPageProps
             </CardContent>
           </Card>
         </div>
-      </DashboardLayout>
     )
   } catch (error) {
     console.error('Error loading campus:', error)

@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import { StudentList } from '@/components/users/StudentList'
 import { TutorList } from '@/components/users/TutorList'
 import { getStudents, getTutors } from '@/lib/user-actions'
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -147,40 +146,38 @@ export default function UsersPage({ searchParams }: UsersPageProps) {
   const activeTab = searchParams.tab || 'students'
 
   return (
-    <DashboardLayout userRole="admin">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-2">
-          <Users className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold">User Management</h1>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue={activeTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="students" className="flex items-center space-x-2">
-              <GraduationCap className="w-4 h-4" />
-              <span>Students</span>
-            </TabsTrigger>
-            <TabsTrigger value="tutors" className="flex items-center space-x-2">
-              <Users className="w-4 h-4" />
-              <span>Tutors</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="students">
-            <Suspense fallback={<UserListSkeleton />}>
-              <StudentsContent searchParams={searchParams} />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="tutors">
-            <Suspense fallback={<UserListSkeleton />}>
-              <TutorsContent searchParams={searchParams} />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center space-x-2">
+        <Users className="w-6 h-6 text-primary" />
+        <h1 className="text-3xl font-bold">User Management</h1>
       </div>
-    </DashboardLayout>
+
+      {/* Tabs */}
+      <Tabs defaultValue={activeTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="students" className="flex items-center space-x-2">
+            <GraduationCap className="w-4 h-4" />
+            <span>Students</span>
+          </TabsTrigger>
+          <TabsTrigger value="tutors" className="flex items-center space-x-2">
+            <Users className="w-4 h-4" />
+            <span>Tutors</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="students">
+          <Suspense fallback={<UserListSkeleton />}>
+            <StudentsContent searchParams={searchParams} />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="tutors">
+          <Suspense fallback={<UserListSkeleton />}>
+            <TutorsContent searchParams={searchParams} />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 } 

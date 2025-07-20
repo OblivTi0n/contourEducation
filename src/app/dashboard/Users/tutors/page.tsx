@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { TutorList } from '@/components/users/TutorList'
 import { getTutors } from '@/lib/user-actions'
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface TutorsPageProps {
@@ -91,10 +90,8 @@ async function TutorsContent({ searchParams }: TutorsPageProps) {
 
 export default function TutorsPage({ searchParams }: TutorsPageProps) {
   return (
-    <DashboardLayout userRole="admin">
-      <Suspense fallback={<TutorListSkeleton />}>
-        <TutorsContent searchParams={searchParams} />
-      </Suspense>
-    </DashboardLayout>
+    <Suspense fallback={<TutorListSkeleton />}>
+      <TutorsContent searchParams={searchParams} />
+    </Suspense>
   )
 } 

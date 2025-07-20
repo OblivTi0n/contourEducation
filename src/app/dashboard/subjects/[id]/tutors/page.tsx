@@ -19,11 +19,9 @@ export default async function TutorAssignmentPage({ params }: TutorAssignmentPag
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <TutorAssignment 
-        subject={subject} 
-        availableTutors={availableTutors} 
-      />
-    </div>
+    <TutorAssignment 
+      subject={subject} 
+      availableTutors={availableTutors} 
+    />
   );
 } 

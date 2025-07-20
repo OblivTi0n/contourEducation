@@ -27,24 +27,24 @@ export const Navigation = () => {
 
   const getNavigationItems = () => {
     const baseItems = [
-      { label: "Dashboard", href: `/${userRole}Dashboard`, icon: Home },
-      { label: "Schedule", href: `/schedule`, icon: Calendar },
-      { label: "Resources", href: `/resources`, icon: FolderOpen },
+      { label: "Dashboard", href: `/dashboard`, icon: Home },
+      { label: "Lessons", href: `/dashboard/lessons`, icon: Calendar },
+      { label: "Resources", href: `/dashboard/resources`, icon: FolderOpen },
     ];
 
     if (userRole === "admin") {
       return [
         ...baseItems,
-        { label: "Users", href: "/users", icon: Users },
-        { label: "Subjects", href: "/subjects", icon: BookOpen },
-        { label: "Settings", href: "/settings", icon: Settings },
+        { label: "Users", href: "/dashboard/users", icon: Users },
+        { label: "Subjects", href: "/dashboard/subjects", icon: BookOpen },
+        { label: "Campuses", href: "/dashboard/campuses", icon: Settings },
       ];
     }
 
     if (userRole === "tutor") {
       return [
         ...baseItems,
-        { label: "Students", href: "/students", icon: Users },
+        { label: "Students", href: "/dashboard/students", icon: Users },
       ];
     }
 
@@ -75,7 +75,7 @@ export const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href={`/${userRole}Dashboard`} className="flex items-center space-x-2">
+          <Link href="/dashboard" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary-foreground/20 rounded-lg flex items-center justify-center">
               <BookOpen className="w-5 h-5" />
             </div>

@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { StudentList } from '@/components/users/StudentList'
 import { getStudents } from '@/lib/user-actions'
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface StudentsPageProps {
@@ -92,10 +91,8 @@ async function StudentsContent({ searchParams }: StudentsPageProps) {
 
 export default function StudentsPage({ searchParams }: StudentsPageProps) {
   return (
-    <DashboardLayout userRole="admin">
-      <Suspense fallback={<StudentListSkeleton />}>
-        <StudentsContent searchParams={searchParams} />
-      </Suspense>
-    </DashboardLayout>
+    <Suspense fallback={<StudentListSkeleton />}>
+      <StudentsContent searchParams={searchParams} />
+    </Suspense>
   )
 } 
