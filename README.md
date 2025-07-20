@@ -46,12 +46,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 src/
 ├── app/
-│   ├── admindashboard/
-│   │   └── page.tsx          # Admin dashboard (admin role only)
-│   ├── studentdashboard/
-│   │   └── page.tsx          # Student dashboard (default/student role)
-│   ├── tutordashboard/
-│   │   └── page.tsx          # Tutor dashboard (tutor role only)
+│   ├── dashboard/
+│   │   └── page.tsx          # Unified dashboard (role-based component rendering)
 │   ├── login/
 │   │   └── page.tsx          # Login/signup page
 │   ├── layout.tsx            # Root layout
@@ -74,12 +70,13 @@ src/
 - Error handling and success messages
 - Auto-redirect to appropriate role-based dashboard on successful login
 
-### Role-Based Dashboards
-- **Student Dashboard** (`/studentdashboard`): Default dashboard for students and fallback for users without specific roles
-- **Admin Dashboard** (`/admindashboard`): Administrative dashboard for admin users only  
-- **Tutor Dashboard** (`/tutordashboard`): Tutor-specific dashboard for tutor users only
+### Role-Based Dashboard
+- **Unified Dashboard** (`/dashboard`): Single route that automatically renders the appropriate dashboard component based on user role:
+  - **Student Dashboard**: Default view for students and fallback for users without specific roles
+  - **Admin Dashboard**: Administrative view for admin users only  
+  - **Tutor Dashboard**: Tutor-specific view for tutor users only
 
-Each dashboard displays user authentication information and role-specific content.
+The dashboard automatically detects the user's role from their JWT token and displays the appropriate interface.
 - Complete session details in JSON format
 - Sign out functionality
 
@@ -105,9 +102,6 @@ Each dashboard displays user authentication information and role-specific conten
 3. Add your environment variables
 4. Run the development server
 5. Navigate to `/login` to create an account or sign in
-6. Access your role-specific dashboard to view your JWT tokens:
-   - `/studentdashboard` (default)
-   - `/admindashboard` (admin users only)
-   - `/tutordashboard` (tutor users only)
+6. Access the dashboard at `/dashboard` to view your JWT tokens and role-specific content
 
 That's it! You now have a fully functional authentication system with Supabase.

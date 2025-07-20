@@ -27,20 +27,7 @@ export function decodeJWT(token: string) {
 
 // Helper function to get the appropriate dashboard route based on user role
 export function getRoleDashboardRoute(accessToken: string): string {
-  const decodedToken = decodeJWT(accessToken)
-  
-  if (decodedToken && decodedToken.user_role) {
-    switch (decodedToken.user_role) {
-      case 'admin':
-        return '/admindashboard'
-      case 'student':
-        return '/studentdashboard'
-      case 'tutor':
-        return '/tutordashboard'
-      default:
-        return '/studentdashboard' // Default fallback
-    }
-  }
-  
-  return '/studentdashboard' // Default fallback
+  // Since we now have a unified dashboard that handles role-based rendering,
+  // we always return the same route regardless of role
+  return '/dashboard'
 } 

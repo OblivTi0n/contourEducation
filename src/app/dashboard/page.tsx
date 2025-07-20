@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { AdminDashboard } from '@/components/dashboard/AdminDashboard'
 import { TutorDashboard } from '@/components/dashboard/TutorDashboard'
+import { StudentDashboard } from '@/components/dashboard/StudentDashboard'
 
 // Helper function to decode JWT and extract claims
 function decodeJWT(token: string) {
@@ -22,7 +24,7 @@ function decodeJWT(token: string) {
   }
 }
 
-export default async function TutorDashboardPage() {
+export default async function DashboardPage() {
   const supabase = await createClient()
   
   // Get the current session
@@ -33,28 +35,24 @@ export default async function TutorDashboardPage() {
   }
 
   const user = session.user
-  let userRole: string | null = null
+  let userRole: string = 'student' // Default fallback
 
   // Decode JWT to extract user role
   if (session.access_token) {
     const decodedToken = decodeJWT(session.access_token)
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role
-      
-      // Auth guard: Only allow tutor users
-      if (decodedToken.user_role !== 'tutor') {
-        // Redirect to appropriate dashboard based on role
-        if (decodedToken.user_role === 'admin') {
-          redirect('/admindashboard')
-        } else {
-          redirect('/studentdashboard')
-        }
-      }
-    } else {
-      // No role found, redirect to default dashboard
-      redirect('/studentdashboard')
     }
   }
 
-  return <TutorDashboard />
+  // Render appropriate dashboard based on user role
+  switch (userRole) {
+    case 'admin':
+      return <AdminDashboard />
+    case 'tutor':
+      return <TutorDashboard />
+    case 'student':
+    default:
+      return <StudentDashboard />
+  }
 } 

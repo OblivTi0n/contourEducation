@@ -30,22 +30,14 @@ export async function middleware(request: NextRequest) {
   // This will refresh session if expired - required for Server Components
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect role-specific dashboard routes
-  if ((request.nextUrl.pathname.startsWith('/admindashboard') || 
-       request.nextUrl.pathname.startsWith('/studentdashboard') || 
-       request.nextUrl.pathname.startsWith('/tutordashboard')) && !user) {
+  // Protect dashboard route
+  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Redirect to appropriate dashboard if already logged in and trying to access login
+  // Redirect to dashboard if already logged in and trying to access login
   if (request.nextUrl.pathname.startsWith('/login') && user) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      const { getRoleDashboardRoute } = await import('./src/lib/utils')
-      const dashboardRoute = getRoleDashboardRoute(session.access_token)
-      return NextResponse.redirect(new URL(dashboardRoute, request.url))
-    }
-    return NextResponse.redirect(new URL('/studentdashboard', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse

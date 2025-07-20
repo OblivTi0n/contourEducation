@@ -41,7 +41,7 @@ export default function Login() {
           const dashboardRoute = getRoleDashboardRoute(session.access_token)
           window.location.href = dashboardRoute
         } else {
-          window.location.href = '/studentdashboard' // Fallback
+          window.location.href = '/dashboard' // Fallback
         }
       }
     } catch (error: any) {
