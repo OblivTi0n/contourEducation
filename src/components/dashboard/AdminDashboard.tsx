@@ -2,7 +2,6 @@
 
 import { DashboardLayout } from "./DashboardLayout";
 import { StatCard } from "./StatCard";
-import { UpcomingLessons } from "./UpcomingLessons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,50 +13,19 @@ import {
   TrendingUp, 
   UserPlus,
   Settings,
-  FileText,
   BarChart3,
   Plus,
-  Eye
+  Eye,
+  GraduationCap
 } from "lucide-react";
+import Link from "next/link";
 
 // Mock data
-const mockLessons = [
-  {
-    id: "1",
-    title: "VCE Math Methods - Advanced Calculus",
-    subject: "Math Methods 3/4",
-    date: "2024-07-22",
-    time: "2:00 PM",
-    location: "Room 101",
-    type: "in-person" as const,
-    instructor: "Dr. Sarah Johnson",
-    students: 8
-  },
-  {
-    id: "2",
-    title: "VCE Chemistry - Organic Chemistry",
-    subject: "Chemistry 3/4",
-    date: "2024-07-22",
-    time: "4:00 PM",
-    location: "Virtual Classroom",
-    type: "online" as const,
-    instructor: "Prof. Michael Chen",
-    students: 12
-  }
-];
-
 const mockSubjects = [
   { id: "1", name: "VCE Math Methods 3/4", students: 45, tutors: 3, lessons: 28 },
   { id: "2", name: "VCE Chemistry 3/4", students: 38, tutors: 2, lessons: 24 },
   { id: "3", name: "VCE English 3/4", students: 52, tutors: 4, lessons: 32 },
   { id: "4", name: "VCE Physics 3/4", students: 29, tutors: 2, lessons: 18 }
-];
-
-const mockRecentActivity = [
-  { id: "1", action: "New student enrolled", details: "Emma Wilson joined VCE Math Methods 3/4", time: "2 hours ago" },
-  { id: "2", action: "Lesson completed", details: "VCE Chemistry - Organic Chemistry with 12 students", time: "4 hours ago" },
-  { id: "3", action: "Resource uploaded", details: "Calculus Practice Problems by Dr. Sarah Johnson", time: "6 hours ago" },
-  { id: "4", action: "New tutor assigned", details: "Prof. Lisa Anderson assigned to VCE English 1/2", time: "1 day ago" }
 ];
 
 export const AdminDashboard = () => {
@@ -102,21 +70,29 @@ export const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Button className="h-20 flex-col space-y-2">
-                <UserPlus className="w-6 h-6" />
-                <span>Add User</span>
+              <Button className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/Users/create">
+                  <UserPlus className="w-6 h-6" />
+                  <span>Add User</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <Plus className="w-6 h-6" />
-                <span>Create Subject</span>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/Users">
+                  <Users className="w-6 h-6" />
+                  <span>View Users</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <Calendar className="w-6 h-6" />
-                <span>Schedule Lesson</span>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/subjects">
+                  <BookOpen className="w-6 h-6" />
+                  <span>View Subjects</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <BarChart3 className="w-6 h-6" />
-                <span>View Reports</span>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/campuses">
+                  <Calendar className="w-6 h-6" />
+                  <span>View Campuses</span>
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -124,9 +100,6 @@ export const AdminDashboard = () => {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Today's Lessons */}
-          <UpcomingLessons lessons={mockLessons} userRole="admin" />
-
           {/* Subject Overview */}
           <Card className="animate-fade-in">
             <CardHeader>
@@ -168,10 +141,7 @@ export const AdminDashboard = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Analytics and Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Enrollment Trends */}
           <Card className="animate-scale-in">
             <CardHeader>
@@ -197,34 +167,6 @@ export const AdminDashboard = () => {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card className="animate-fade-in">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-primary" />
-                <span>Recent Activity</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mockRecentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start space-x-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
-                >
-                  <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-sm">{activity.action}</h4>
-                    <p className="text-sm text-muted-foreground">{activity.details}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-              <Button className="w-full" variant="outline">
-                View All Activity
-              </Button>
             </CardContent>
           </Card>
         </div>
