@@ -126,6 +126,18 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Test Accounts
+
+You can use the following accounts to test the different user roles:
+
+| Role    | Email                | Password      |
+| :------ | :------------------- | :------------ |
+| Student | john@gmail.com       | Bonjour123-   |
+| Tutor   | johnsnow@gmail.com   | Bonjour123-   |
+| Student | philip@gmail.com     | Bonjour123-   |
+| Tutor   | mary@gmail.com       | Bonjour123-   |
+| Admin   | admin@gmail.com      | Bonjour13-    |
+
 ## Project Structure
 
 To keep the project structure clean and maintainable, this application follows a pattern similar to Model-View-Controller (MVC). Here’s how the directories are organized:
