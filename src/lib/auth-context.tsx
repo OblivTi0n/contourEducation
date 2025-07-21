@@ -71,23 +71,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial user (secure method)
     const getInitialUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      if (error) {
-        console.error('Error getting user:', error);
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Error getting user:', error);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        
+        setUser(user);
+        
+        if (user) {
+          try {
+            const userProfile = await extractUserProfile(user);
+            setProfile(userProfile);
+          } catch (profileError) {
+            console.error('Error extracting user profile:', profileError);
+            // Set a basic profile as fallback
+            setProfile({
+              id: user.id,
+              email: user.email || '',
+              role: 'student',
+              first_name: user.user_metadata?.first_name,
+              last_name: user.user_metadata?.last_name,
+            });
+          }
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error('Error in getInitialUser:', error);
         setUser(null);
         setProfile(null);
+      } finally {
+        // Always set loading to false
         setLoading(false);
-        return;
       }
-      
-      setUser(user);
-      
-      if (user) {
-        const userProfile = await extractUserProfile(user);
-        setProfile(userProfile);
-      }
-      setLoading(false);
     };
 
     getInitialUser();
@@ -95,16 +117,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        const sessionUser = session?.user ?? null;
-        setUser(sessionUser);
-        
-        if (sessionUser) {
-          const userProfile = await extractUserProfile(sessionUser);
-          setProfile(userProfile);
-        } else {
+        try {
+          const sessionUser = session?.user ?? null;
+          setUser(sessionUser);
+          
+          if (sessionUser) {
+            try {
+              const userProfile = await extractUserProfile(sessionUser);
+              setProfile(userProfile);
+            } catch (profileError) {
+              console.error('Error extracting user profile in auth change:', profileError);
+              // Set a basic profile as fallback
+              setProfile({
+                id: sessionUser.id,
+                email: sessionUser.email || '',
+                role: 'student',
+                first_name: sessionUser.user_metadata?.first_name,
+                last_name: sessionUser.user_metadata?.last_name,
+              });
+            }
+          } else {
+            setProfile(null);
+          }
+        } catch (error) {
+          console.error('Error in onAuthStateChange:', error);
+          setUser(null);
           setProfile(null);
+        } finally {
+          // Always set loading to false
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 

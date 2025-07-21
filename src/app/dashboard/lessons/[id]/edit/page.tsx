@@ -72,7 +72,7 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
 
     // Tutors can only edit lessons they're assigned to
     if (userRole === 'tutor') {
-      const isAssigned = lesson.tutors?.some(tutor => tutor.id === session.user.id)
+      const isAssigned = lesson.tutors?.some(tutor => tutor.id === user.id)
       if (!isAssigned) {
         redirect('/dashboard/lessons')
       }
@@ -87,7 +87,7 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
         .select(`
           subject:subjects(id, code, title)
         `)
-        .eq('tutor_id', session.user.id)
+        .eq('tutor_id', user.id)
       
       if (tutorSubjectsError) {
         console.error('Error fetching tutor subjects:', tutorSubjectsError)

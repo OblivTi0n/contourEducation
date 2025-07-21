@@ -28,6 +28,7 @@ export const Navigation = () => {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
   }>>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { profile, signOut, loading } = useAuth();
 
   const userRole = profile?.role || "student";
@@ -64,10 +65,30 @@ export const Navigation = () => {
       ];
     };
 
-    if (!loading && profile) {
+    // Set navigation items when auth is done loading, regardless of profile state
+    if (!loading) {
       setNavigationItems(getNavigationItems());
+      setIsInitialized(true);
     }
-  }, [userRole, loading, profile]);
+  }, [userRole, loading]);
+
+  // Fallback timeout to prevent indefinite loading state
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isInitialized) {
+        console.warn('Navigation initialization timeout, forcing initialization');
+        setNavigationItems([
+          { label: "Dashboard", href: `/dashboard`, icon: Home },
+          { label: "Schedule", href: `/dashboard/schedule`, icon: Calendar },
+          { label: "Lessons", href: `/dashboard/lessons`, icon: FolderOpen },
+          { label: "Subjects", href: "/dashboard/subjects", icon: BookOpen },
+        ]);
+        setIsInitialized(true);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isInitialized]);
 
   const isActive = (href: string) => {
     return pathname === href;
@@ -86,6 +107,8 @@ export const Navigation = () => {
     ? `${profile.first_name} ${profile.last_name}`
     : profile?.first_name || (loading ? "Loading..." : userRole);
 
+  const shouldShowLoading = loading && !isInitialized;
+
   return (
     <nav className="bg-gradient-primary text-primary-foreground shadow-elegant relative z-30">
       <div className="container mx-auto px-4">
@@ -103,7 +126,7 @@ export const Navigation = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            {loading || navigationItems.length === 0 ? (
+            {shouldShowLoading ? (
               // Loading placeholder to prevent layout shift
               <>
                 <div className="h-8 w-20 bg-primary-foreground/10 rounded animate-pulse"></div>
@@ -129,7 +152,7 @@ export const Navigation = () => {
 
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
-            {loading ? (
+            {shouldShowLoading ? (
               <div className="h-8 w-24 bg-primary-foreground/10 rounded animate-pulse"></div>
             ) : (
               <>
@@ -142,7 +165,7 @@ export const Navigation = () => {
                   size="sm" 
                   className="bg-white hover:bg-gray-100 text-blue-600"
                   onClick={() => router.push(`/dashboard/users/${profile?.id}`)}
-                  disabled={loading || !profile?.id}
+                  disabled={!profile?.id}
                 >
                   <User className="w-4 h-4" />
                 </Button>
@@ -151,7 +174,6 @@ export const Navigation = () => {
                   size="sm" 
                   className="bg-white hover:bg-gray-100 text-blue-600"
                   onClick={handleSignOut}
-                  disabled={loading}
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -173,7 +195,7 @@ export const Navigation = () => {
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 space-y-2 animate-fade-in">
-            {loading || navigationItems.length === 0 ? (
+            {shouldShowLoading ? (
               // Loading placeholder for mobile
               <>
                 <div className="h-8 w-24 bg-primary-foreground/10 rounded animate-pulse mx-3"></div>
@@ -205,7 +227,7 @@ export const Navigation = () => {
                   router.push(`/dashboard/users/${profile?.id}`);
                   setIsMobileMenuOpen(false);
                 }}
-                disabled={loading || !profile?.id}
+                disabled={!profile?.id}
               >
                 <User className="w-4 h-4 mr-2" />
                 Profile
@@ -215,7 +237,6 @@ export const Navigation = () => {
                 size="sm" 
                 className="w-full justify-start bg-white hover:bg-gray-100 text-blue-600"
                 onClick={handleSignOut}
-                disabled={loading}
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
