@@ -422,6 +422,11 @@ export function UserForm({ user, mode, currentUserRole, currentUserId }: UserFor
       return false;
     }
     
+    // Students cannot edit their own subject enrolments
+    if (currentUserRole === 'student' && mode === 'edit' && user && currentUserId === user.id) {
+      return false;
+    }
+    
     // For create mode or other scenarios, allow if user is admin (already handled above)
     return currentUserRole === 'admin';
   };
@@ -805,74 +810,108 @@ export function UserForm({ user, mode, currentUserRole, currentUserId }: UserFor
                 <span>Subject Enrolments</span>
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Select the subjects this student is enrolled in
+                {canEditSubjectAssignments() 
+                  ? "Select the subjects this student is enrolled in"
+                  : "Subjects you are enrolled in (contact an admin to make changes)"
+                }
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isLoadingSubjects ? (
-                <p className="text-sm text-muted-foreground">Loading subjects...</p>
-              ) : availableSubjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No subjects available</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {availableSubjects.map((subject) => (
-                    <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                      <Checkbox
-                        id={`student-subject-${subject.id}`}
-                        checked={isStudentEnrolledInSubject(subject.id)}
-                        onCheckedChange={() => handleStudentEnrolmentToggle(subject.id)}
-                      />
-                      <div className="flex-1">
-                        <label
-                          htmlFor={`student-subject-${subject.id}`}
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          {subject.code} - {subject.title}
-                        </label>
-                        {isStudentEnrolledInSubject(subject.id) && (
-                          <div className="mt-2">
-                            <Select
-                              value={getStudentEnrolmentStatus(subject.id)}
-                              onValueChange={(status: 'active' | 'completed' | 'dropped') =>
-                                handleStudentStatusChange(subject.id, status)
-                              }
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="dropped">Dropped</SelectItem>
-                              </SelectContent>
-                            </Select>
+              {!canEditSubjectAssignments() ? (
+                // Read-only view for students viewing their own profile
+                <div className="space-y-4">
+                  {studentEnrolments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects currently enrolled</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {studentEnrolments.map((enrolment) => {
+                        const subject = availableSubjects.find(s => s.id === enrolment.subject_id);
+                        if (!subject) return null;
+                        return (
+                          <div key={enrolment.subject_id} className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/50">
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">
+                                {subject.code} - {subject.title}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Status: {enrolment.status.charAt(0).toUpperCase() + enrolment.status.slice(1)}
+                              </div>
+                            </div>
                           </div>
-                        )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Editable view for admins
+                <>
+                  {isLoadingSubjects ? (
+                    <p className="text-sm text-muted-foreground">Loading subjects...</p>
+                  ) : availableSubjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects available</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {availableSubjects.map((subject) => (
+                        <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <Checkbox
+                            id={`student-subject-${subject.id}`}
+                            checked={isStudentEnrolledInSubject(subject.id)}
+                            onCheckedChange={() => handleStudentEnrolmentToggle(subject.id)}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`student-subject-${subject.id}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              {subject.code} - {subject.title}
+                            </label>
+                            {isStudentEnrolledInSubject(subject.id) && (
+                              <div className="mt-2">
+                                <Select
+                                  value={getStudentEnrolmentStatus(subject.id)}
+                                  onValueChange={(status: 'active' | 'completed' | 'dropped') =>
+                                    handleStudentStatusChange(subject.id, status)
+                                  }
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="dropped">Dropped</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {studentEnrolments.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium mb-2">
+                        Enrolled Subjects ({studentEnrolments.length}):
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {studentEnrolments.map((enrolment) => {
+                          const subject = availableSubjects.find(s => s.id === enrolment.subject_id);
+                          if (!subject) return null;
+                          return (
+                            <Badge 
+                              key={enrolment.subject_id} 
+                              variant={enrolment.status === 'active' ? 'default' : 'secondary'}
+                            >
+                              {subject.code} ({enrolment.status})
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-              {studentEnrolments.length > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-2">
-                    Enrolled Subjects ({studentEnrolments.length}):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {studentEnrolments.map((enrolment) => {
-                      const subject = availableSubjects.find(s => s.id === enrolment.subject_id);
-                      if (!subject) return null;
-                      return (
-                        <Badge 
-                          key={enrolment.subject_id} 
-                          variant={enrolment.status === 'active' ? 'default' : 'secondary'}
-                        >
-                          {subject.code} ({enrolment.status})
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

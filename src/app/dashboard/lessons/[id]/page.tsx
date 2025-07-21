@@ -32,17 +32,18 @@ interface LessonDetailPageProps {
 export default async function LessonDetailPage({ params }: LessonDetailPageProps) {
   const supabase = await createClient()
   
-  // Check authentication
-  const { data: { session }, error } = await supabase.auth.getSession()
+  // Check authentication (secure method)
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (error || !session) {
+  if (error || !user) {
     redirect('/login')
   }
 
   let userRole: string = 'student' // Default fallback
 
-  // Decode JWT to extract user role
-  if (session.access_token) {
+  // Get session only to extract user role from access token
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
     const decodedToken = decodeJWT(session.access_token)
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role
@@ -60,13 +61,13 @@ export default async function LessonDetailPage({ params }: LessonDetailPageProps
     // Check if user has access to this lesson
     if (userRole === 'student') {
       // Students can only view lessons they're enrolled in
-      const isEnrolled = lesson.students?.some(student => student.id === session.user.id)
+      const isEnrolled = lesson.students?.some(student => student.id === user.id)
       if (!isEnrolled) {
         redirect('/dashboard/lessons')
       }
     } else if (userRole === 'tutor') {
       // Tutors can only view lessons they're assigned to
-      const isAssigned = lesson.tutors?.some(tutor => tutor.id === session.user.id)
+      const isAssigned = lesson.tutors?.some(tutor => tutor.id === user.id)
       if (!isAssigned) {
         redirect('/dashboard/lessons')
       }

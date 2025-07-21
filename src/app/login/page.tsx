@@ -13,7 +13,6 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
   const [message, setMessage] = useState('')
   const [showTestCreds, setShowTestCreds] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -23,8 +22,8 @@ export default function Login() {
   // Check if user is already logged in and redirect to dashboard
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.access_token) {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (!error && user) {
         router.push('/dashboard')
       }
     }
@@ -52,22 +51,16 @@ export default function Login() {
     setMessage('')
 
     try {
-      let result
-      if (isSignUp) {
-        result = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (result.error) throw result.error
-        setMessage('Check your email for the confirmation link!')
-      } else {
-        result = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (result.error) throw result.error
-        
-        // Get user role and redirect to appropriate dashboard
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (result.error) throw result.error
+      
+      // Get user and redirect to appropriate dashboard
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (!error && user) {
+        // Get session for access token to determine role
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.access_token) {
           const { getRoleDashboardRoute } = await import('@/lib/utils')
@@ -76,6 +69,8 @@ export default function Login() {
         } else {
           window.location.href = '/dashboard' // Fallback
         }
+      } else {
+        window.location.href = '/dashboard' // Fallback
       }
     } catch (error: unknown) {
       setMessage(error instanceof Error ? error.message : 'An error occurred')
@@ -166,7 +161,7 @@ export default function Login() {
               Welcome to Contour Education
             </h2>
             <p className="text-muted-foreground">
-              {isSignUp ? 'Create your account to get started' : 'Sign in to access your tutoring dashboard'}
+              Sign in to access your tutoring dashboard
             </p>
           </div>
 
@@ -175,13 +170,10 @@ export default function Login() {
             <Card className="animate-slide-up shadow-2xl">
               <CardHeader className="text-center">
                 <CardTitle className="text-xl">
-                  {isSignUp ? 'Create Account' : 'Sign In'}
+                  Sign In
                 </CardTitle>
                 <CardDescription>
-                  {isSignUp 
-                    ? 'Enter your details to create your tutoring account'
-                    : 'Enter your credentials to access your dashboard'
-                  }
+                  Enter your credentials to access your dashboard
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -207,7 +199,7 @@ export default function Login() {
                         id="password"
                         name="password"
                         type={showPassword ? 'text' : 'password'}
-                        autoComplete={isSignUp ? "new-password" : "current-password"}
+                        autoComplete="current-password"
                         required
                         placeholder="Enter your password"
                         value={password}
@@ -245,44 +237,30 @@ export default function Login() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                        Signing In...
                       </>
                     ) : (
-                      isSignUp ? 'Create Account' : 'Sign In'
+                      'Sign In'
                     )}
                   </Button>
-                  <div className="text-center pt-4">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-primary hover:text-primary/80 hover:bg-primary/5"
-                      onClick={() => setIsSignUp(!isSignUp)}
-                    >
-                      {isSignUp 
-                        ? 'Already have an account? Sign in' 
-                        : "Don't have an account? Create one"
-                      }
-                    </Button>
-                  </div>
+
                 </form>
               </CardContent>
             </Card>
           </div>
 
           {/* Toggle Test Credentials Button */}
-          {!isSignUp && (
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-6 mb-2"
-              onClick={() => setShowTestCreds((v) => !v)}
-            >
-              {showTestCreds ? 'Hide Test Credentials' : 'Show Test Credentials'}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-6 mb-2"
+            onClick={() => setShowTestCreds((v) => !v)}
+          >
+            {showTestCreds ? 'Hide Test Credentials' : 'Show Test Credentials'}
+          </Button>
 
           {/* Test Credentials - Toggled Below Form */}
-          {!isSignUp && showTestCreds && (
+          {showTestCreds && (
             <div className="w-full max-w-md flex-shrink-0 mt-2">
               <Card className="animate-slide-up border-amber-200 bg-amber-50">
                 <CardHeader className="pb-3">

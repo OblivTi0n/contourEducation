@@ -57,7 +57,11 @@ export const Navigation = () => {
         ];
       }
 
-      return baseItems;
+      // For students
+      return [
+        ...baseItems,
+        { label: "Subjects", href: "/dashboard/subjects", icon: BookOpen },
+      ];
     };
 
     if (!loading && profile) {

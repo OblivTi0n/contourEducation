@@ -26,17 +26,18 @@ function decodeJWT(token: string) {
 export default async function CreateLessonPage() {
   const supabase = await createClient()
   
-  // Check authentication and permissions
-  const { data: { session }, error } = await supabase.auth.getSession()
+  // Check authentication and permissions (secure method)
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (error || !session) {
+  if (error || !user) {
     redirect('/login')
   }
 
   let userRole: string = 'student' // Default fallback
 
-  // Decode JWT to extract user role
-  if (session.access_token) {
+  // Get session only to extract user role from access token
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
     const decodedToken = decodeJWT(session.access_token)
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role
@@ -58,7 +59,7 @@ export default async function CreateLessonPage() {
         .select(`
           subject:subjects(id, code, title)
         `)
-        .eq('tutor_id', session.user.id)
+        .eq('tutor_id', user.id)
       
       if (tutorSubjectsError) {
         console.error('Error fetching tutor subjects:', tutorSubjectsError)

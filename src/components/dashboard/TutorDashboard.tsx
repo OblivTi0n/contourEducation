@@ -34,18 +34,18 @@ function decodeJWT(token: string) {
 export const TutorDashboard = async () => {
   const supabase = await createClient();
   
-  // Get the current session
-  const { data: { session }, error } = await supabase.auth.getSession();
+  // Get the current user (secure method)
+  const { data: { user }, error } = await supabase.auth.getUser();
   
-  if (error || !session) {
+  if (error || !user) {
     redirect('/login');
   }
 
-  const user = session.user;
   let userRole: string = 'student'; // Default fallback
 
-  // Decode JWT to extract user role
-  if (session.access_token) {
+  // Get session only to extract user role from access token
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
     const decodedToken = decodeJWT(session.access_token);
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role;

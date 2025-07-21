@@ -78,18 +78,19 @@ const LessonListSkeleton = () => (
 async function LessonsPageContent({ searchParams }: LessonsPageProps) {
   const supabase = await createClient()
   
-  // Get the current session and user role
-  const { data: { session }, error } = await supabase.auth.getSession()
+  // Get the current user and user role (secure method)
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (error || !session) {
+  if (error || !user) {
     redirect('/login')
   }
 
   let userRole: string = 'student' // Default fallback
-  const userId = session.user.id
+  const userId = user.id
 
-  // Decode JWT to extract user role
-  if (session.access_token) {
+  // Get session only to extract user role from access token
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
     const decodedToken = decodeJWT(session.access_token)
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role

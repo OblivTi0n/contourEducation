@@ -32,18 +32,18 @@ function decodeJWT(token: string) {
 export const StudentDashboard = async () => {
   const supabase = await createClient();
   
-  // Get the current session
-  const { data: { session }, error } = await supabase.auth.getSession();
+  // Get the current user (secure method)
+  const { data: { user }, error } = await supabase.auth.getUser();
   
-  if (error || !session) {
+  if (error || !user) {
     redirect('/login');
   }
 
-  const user = session.user;
   let userRole: string = 'student'; // Default fallback
 
-  // Decode JWT to extract user role
-  if (session.access_token) {
+  // Get session only to extract user role from access token
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
     const decodedToken = decodeJWT(session.access_token);
     if (decodedToken && decodedToken.user_role) {
       userRole = decodedToken.user_role;
@@ -187,40 +187,7 @@ export const StudentDashboard = async () => {
         </div>
 
         {/* Recent Activity */}
-        <Card className="animate-scale-in">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {lessonsResult.data.slice(0, 5).map((lesson) => (
-              <div
-                key={lesson.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <div>
-                    <h4 className="font-medium">{lesson.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {lesson.subject?.title} • {new Date(lesson.start_time).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {lesson.status === 'completed' ? 'Completed' : 
-                   lesson.status === 'cancelled' ? 'Cancelled' : 
-                   new Date(lesson.start_time) > new Date() ? 'Upcoming' : 'Scheduled'}
-                </div>
-              </div>
-            ))}
-            {lessonsResult.data.length === 0 && (
-              <div className="text-center py-6">
-                <Calendar className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No lessons scheduled yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+   
       </div>
     );
   } catch (error) {

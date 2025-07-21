@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,8 +95,10 @@ export const UpcomingLessons: React.FC<UpcomingLessonsProps> = ({
           ))
         )}
         
-        <Button className="w-full" variant="outline">
-          View All Lessons
+        <Button className="w-full" variant="outline" asChild>
+          <Link href="/dashboard/lessons">
+            View All Lessons
+          </Link>
         </Button>
       </CardContent>
     </Card>
