@@ -31,6 +31,7 @@ interface SubjectListProps {
   searchTerm?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  userRole?: string;
 }
 
 export const SubjectList = ({ 
@@ -40,7 +41,8 @@ export const SubjectList = ({
   totalCount,
   searchTerm = "",
   sortBy = "title",
-  sortOrder = "asc"
+  sortOrder = "asc",
+  userRole = "student"
 }: SubjectListProps) => {
   const [search, setSearch] = useState(searchTerm);
   const [isPending, startTransition] = useTransition();
@@ -120,12 +122,14 @@ export const SubjectList = ({
             Manage VCE subjects and tutor assignments ({totalCount} total)
           </p>
         </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href="/dashboard/subjects/create">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Subject
-          </Link>
-        </Button>
+        {userRole === 'admin' && (
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/dashboard/subjects/create">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Subject
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -165,7 +169,7 @@ export const SubjectList = ({
               <p className="text-muted-foreground mb-4">
                 {searchTerm ? "Try adjusting your search criteria." : "Get started by creating your first subject."}
               </p>
-              {!searchTerm && (
+              {!searchTerm && userRole === 'admin' && (
                 <Button asChild>
                   <Link href="/dashboard/subjects/create">
                     <Plus className="w-4 h-4 mr-2" />
@@ -236,7 +240,9 @@ export const SubjectList = ({
                                 No tutors
                               </Badge>
                             ) : (
-                              subject.tutor_subjects.map((assignment) => (
+                              subject.tutor_subjects
+                                .filter((assignment) => assignment.profiles !== null)
+                                .map((assignment) => (
                                 <Badge 
                                   key={assignment.tutor_id}
                                   variant={assignment.is_lead_tutor ? "default" : "secondary"}
@@ -259,25 +265,29 @@ export const SubjectList = ({
                                 <Eye className="w-4 h-4" />
                               </Link>
                             </Button>
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
-                                <UserPlus className="w-4 h-4" />
-                              </Link>
-                            </Button>
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link href={`/dashboard/subjects/${subject.id}/edit`}>
-                                <Edit className="w-4 h-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDelete(subject.id, subject.code)}
-                              disabled={isPending}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {userRole === 'admin' && (
+                              <>
+                                <Button size="sm" variant="ghost" asChild>
+                                  <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                                    <UserPlus className="w-4 h-4" />
+                                  </Link>
+                                </Button>
+                                <Button size="sm" variant="ghost" asChild>
+                                  <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                                    <Edit className="w-4 h-4" />
+                                  </Link>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDelete(subject.id, subject.code)}
+                                  disabled={isPending}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -304,25 +314,29 @@ export const SubjectList = ({
                               <Eye className="w-4 h-4" />
                             </Link>
                           </Button>
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
-                              <UserPlus className="w-4 h-4" />
-                            </Link>
-                          </Button>
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/dashboard/subjects/${subject.id}/edit`}>
-                              <Edit className="w-4 h-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(subject.id, subject.code)}
-                            disabled={isPending}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {userRole === 'admin' && (
+                            <>
+                              <Button size="sm" variant="ghost" asChild>
+                                <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                                  <UserPlus className="w-4 h-4" />
+                                </Link>
+                              </Button>
+                              <Button size="sm" variant="ghost" asChild>
+                                <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                                  <Edit className="w-4 h-4" />
+                                </Link>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDelete(subject.id, subject.code)}
+                                disabled={isPending}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -334,7 +348,9 @@ export const SubjectList = ({
                               No tutors assigned
                             </Badge>
                           ) : (
-                            subject.tutor_subjects.map((assignment) => (
+                            subject.tutor_subjects
+                              .filter((assignment) => assignment.profiles !== null)
+                              .map((assignment) => (
                               <Badge 
                                 key={assignment.tutor_id}
                                 variant={assignment.is_lead_tutor ? "default" : "secondary"}

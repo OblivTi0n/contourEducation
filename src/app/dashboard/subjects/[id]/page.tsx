@@ -1,10 +1,31 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { fetchSubjectById } from "@/lib/subject-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, UserPlus, Calendar, Users, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase-server";
+
+// Helper function to decode JWT and extract claims
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding JWT:', error)
+    return null
+  }
+}
 
 interface SubjectDetailPageProps {
   params: {
@@ -13,6 +34,25 @@ interface SubjectDetailPageProps {
 }
 
 export default async function SubjectDetailPage({ params }: SubjectDetailPageProps) {
+  const supabase = await createClient()
+  
+  // Check authentication and get user role
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    redirect('/login')
+  }
+
+  let userRole: string = 'student' // Default fallback
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token)
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role
+    }
+  }
+
   const subject = await fetchSubjectById(params.id);
 
   if (!subject) {
@@ -51,20 +91,22 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             <h1 className="text-3xl font-bold">{subject.title}</h1>
             <p className="text-muted-foreground">Subject Code: {subject.code}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Manage Tutors
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href={`/dashboard/subjects/${subject.id}/edit`}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Subject
-              </Link>
-            </Button>
-          </div>
+          {userRole === 'admin' && (
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Manage Tutors
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Subject
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Subject Information */}
@@ -113,7 +155,9 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {subject.tutor_subjects.map((assignment) => (
+                    {subject.tutor_subjects
+                      .filter((assignment) => assignment.profiles !== null)
+                      .map((assignment) => (
                       <div
                         key={assignment.tutor_id}
                         className="flex items-center justify-between p-3 border rounded-lg"
@@ -166,58 +210,34 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
                 </div>
                 <div className="text-sm text-muted-foreground">Lead Tutors</div>
               </div>
-
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
-                  0
-                </div>
-                <div className="text-sm text-muted-foreground">Active Lessons</div>
-                <p className="text-xs text-muted-foreground mt-1">Coming soon</p>
-              </div>
-
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
-                  0
-                </div>
-                <div className="text-sm text-muted-foreground">Enrolled Students</div>
-                <p className="text-xs text-muted-foreground mt-1">Coming soon</p>
-              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
-                <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
-                  <UserPlus className="w-6 h-6" />
-                  <span>Manage Tutors</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
-                <Link href={`/dashboard/subjects/${subject.id}/edit`}>
-                  <Edit className="w-6 h-6" />
-                  <span>Edit Subject</span>
-                </Link>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2" disabled>
-                <Calendar className="w-6 h-6" />
-                <span>View Lessons</span>
-                <span className="text-xs">(Coming Soon)</span>
-              </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2" disabled>
-                <Users className="w-6 h-6" />
-                <span>View Students</span>
-                <span className="text-xs">(Coming Soon)</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {userRole === 'admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                  <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                    <UserPlus className="w-6 h-6" />
+                    <span>Manage Tutors</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                  <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                    <Edit className="w-6 h-6" />
+                    <span>Edit Subject</span>
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

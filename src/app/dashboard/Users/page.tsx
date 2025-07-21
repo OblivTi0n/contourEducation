@@ -14,6 +14,7 @@ interface UsersPageProps {
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     page?: string
+    subject?: string
   }
 }
 
@@ -72,9 +73,10 @@ async function StudentsContent({ searchParams }: UsersPageProps) {
   const sortBy = searchParams.sortBy || 'first_name'
   const sortOrder = searchParams.sortOrder || 'asc'
   const page = parseInt(searchParams.page || '1')
+  const subjectFilter = searchParams.subject
 
   try {
-    const result = await getStudents(search, sortBy, sortOrder, page)
+    const result = await getStudents(search, sortBy, sortOrder, page, subjectFilter)
 
     return (
       <StudentList
@@ -85,6 +87,7 @@ async function StudentsContent({ searchParams }: UsersPageProps) {
         searchQuery={search}
         sortBy={sortBy}
         sortOrder={sortOrder}
+        subjectFilter={subjectFilter}
         userRole="admin"
       />
     )
@@ -110,9 +113,10 @@ async function TutorsContent({ searchParams }: UsersPageProps) {
   const sortBy = searchParams.sortBy || 'first_name'
   const sortOrder = searchParams.sortOrder || 'asc'
   const page = parseInt(searchParams.page || '1')
+  const subjectFilter = searchParams.subject
 
   try {
-    const result = await getTutors(search, sortBy, sortOrder, page)
+    const result = await getTutors(search, sortBy, sortOrder, page, subjectFilter)
 
     return (
       <TutorList
@@ -123,6 +127,7 @@ async function TutorsContent({ searchParams }: UsersPageProps) {
         searchQuery={search}
         sortBy={sortBy}
         sortOrder={sortOrder}
+        subjectFilter={subjectFilter}
       />
     )
   } catch (error) {

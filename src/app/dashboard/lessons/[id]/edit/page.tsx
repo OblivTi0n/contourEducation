@@ -74,17 +74,42 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
       }
     }
 
-    // Fetch required data for the form
+    // Fetch subjects based on user role
+    let subjectsResult
+    if (userRole === 'tutor') {
+      // For tutors, only fetch subjects they are assigned to
+      const { data: tutorSubjects, error: tutorSubjectsError } = await supabase
+        .from('tutor_subjects')
+        .select(`
+          subject:subjects(id, code, title)
+        `)
+        .eq('tutor_id', session.user.id)
+      
+      if (tutorSubjectsError) {
+        console.error('Error fetching tutor subjects:', tutorSubjectsError)
+        throw tutorSubjectsError
+      }
+      
+      // Extract subjects from the tutor_subjects relation and ensure proper typing
+      const subjects = tutorSubjects
+        ?.map((ts: any) => ts.subject)
+        .filter((subject: any) => subject && subject.id && subject.code && subject.title)
+        .sort((a: any, b: any) => a.code.localeCompare(b.code)) || []
+      
+      subjectsResult = { data: subjects, error: null }
+    } else {
+      // For admins, fetch all subjects
+      subjectsResult = await supabase
+        .from('subjects')
+        .select('id, code, title')
+        .order('code')
+    }
+
+    // Fetch campuses and rooms
     const [
-      subjectsResult,
       campusesResult,
       roomsResult,
     ] = await Promise.all([
-      supabase
-        .from('subjects')
-        .select('id, code, title')
-        .order('code'),
-      
       supabase
         .from('campuses')
         .select('id, name')
@@ -117,10 +142,10 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
     const campuses = campusesResult.data || []
     const rooms = roomsResult.data || []
 
-    // Get available tutors and students for the current subject
+    // Get available tutors and students (will be filtered by subject in the form)
     const [availableTutors, enrolledStudents] = await Promise.all([
-      getAvailableTutors(lesson.subject_id),
-      getEnrolledStudents(lesson.subject_id),
+      getAvailableTutors(), // Get all tutors initially, will be filtered by subject in form
+      getEnrolledStudents(), // Get all students initially, will be filtered by subject in form
     ])
 
     const handleSubmit = async (data: any) => {

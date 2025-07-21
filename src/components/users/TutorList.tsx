@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -46,8 +53,9 @@ import {
   Mail,
   Phone,
   Star,
+  BookOpen,
 } from "lucide-react";
-import { UserProfile, deleteUser } from "@/lib/user-actions";
+import { UserProfile, deleteUser, getAvailableSubjects } from "@/lib/user-actions";
 
 interface TutorListProps {
   tutors: UserProfile[];
@@ -57,6 +65,7 @@ interface TutorListProps {
   searchQuery?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  subjectFilter?: string;
 }
 
 const sortableColumns = [
@@ -72,13 +81,16 @@ export function TutorList({
   totalPages,
   searchQuery = '',
   sortBy = 'first_name',
-  sortOrder = 'asc'
+  sortOrder = 'asc',
+  subjectFilter
 }: TutorListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tutorToDelete, setTutorToDelete] = useState<UserProfile | null>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<Array<{id: string, code: string, title: string}>>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
 
   const updateSearchParams = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -103,10 +115,31 @@ export function TutorList({
     updateSearchParams({ search: value || undefined });
   };
 
+  const handleSubjectFilter = (value: string) => {
+    updateSearchParams({ subject: value === 'all' ? undefined : value });
+  };
+
   const handleSort = (column: string) => {
     const newSortOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc';
     updateSearchParams({ sortBy: column, sortOrder: newSortOrder });
   };
+
+  // Load available subjects
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setIsLoadingSubjects(true);
+        const subjects = await getAvailableSubjects();
+        setAvailableSubjects(subjects || []);
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+      } finally {
+        setIsLoadingSubjects(false);
+      }
+    };
+
+    loadSubjects();
+  }, []);
 
   const handlePageChange = (page: number) => {
     updateSearchParams({ page: page.toString() });
@@ -166,23 +199,45 @@ export function TutorList({
           <h1 className="text-2xl font-bold">Tutors</h1>
           <Badge variant="secondary">{totalCount} total</Badge>
         </div>
-        <Button onClick={() => router.push('/dashboard/Users/create?role=tutor')}>
+        <Button onClick={() => router.push('/dashboard/users/create?role=tutor')}>
           <Plus className="w-4 h-4 mr-2" />
           Add Tutor
         </Button>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search tutors..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search tutors..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Select value={subjectFilter || 'all'} onValueChange={handleSubjectFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <BookOpen className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by subject" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subjects</SelectItem>
+                {isLoadingSubjects ? (
+                  <SelectItem value="loading" disabled>Loading subjects...</SelectItem>
+                ) : (
+                  availableSubjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.code} - {subject.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -264,13 +319,13 @@ export function TutorList({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => router.push(`/dashboard/Users/${tutor.id}`)}
+                            onClick={() => router.push(`/dashboard/users/${tutor.id}`)}
                           >
                             <Eye className="w-4 h-4 mr-2" />
                             View
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => router.push(`/dashboard/Users/${tutor.id}/edit`)}
+                            onClick={() => router.push(`/dashboard/users/${tutor.id}/edit`)}
                           >
                             <Edit className="w-4 h-4 mr-2" />
                             Edit

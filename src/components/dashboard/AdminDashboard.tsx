@@ -26,9 +26,15 @@ export const AdminDashboard = async () => {
     getEnrollmentTrends()
   ]);
 
-  // Calculate growth percentage for students (simple calculation based on current data)
-  const growthPercentage = dashboardStats.totalStudents > 0 ? 
-    Math.min(Math.round((dashboardStats.totalStudents / 100) * 12), 25) : 0;
+  // Calculate actual monthly growth based on enrollment trends
+  let monthlyGrowth = 0;
+  if (enrollmentTrends.length >= 2) {
+    const currentMonth = enrollmentTrends[enrollmentTrends.length - 1];
+    const previousMonth = enrollmentTrends[enrollmentTrends.length - 2];
+    monthlyGrowth = currentMonth.students - previousMonth.students;
+  } else if (enrollmentTrends.length === 1) {
+    monthlyGrowth = enrollmentTrends[0].students;
+  }
 
   return (
       <div className="space-y-8">
@@ -43,7 +49,7 @@ export const AdminDashboard = async () => {
           <StatCard
             title="Total Students"
             value={dashboardStats.totalStudents.toString()}
-            description={`+${growthPercentage} this month`}
+            description={`+${monthlyGrowth} this month`}
             iconName="Users"
             gradient
           />
@@ -76,15 +82,21 @@ export const AdminDashboard = async () => {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Button className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/lessons/create">
+                  <Plus className="w-6 h-6" />
+                  <span>Create Lesson</span>
+                </Link>
+              </Button>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
                 <Link href="/dashboard/lessons">
                   <Calendar className="w-6 h-6" />
                   <span>View Lessons</span>
                 </Link>
               </Button>
               <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
-                <Link href="/dashboard/Users">
+                <Link href="/dashboard/users">
                   <Users className="w-6 h-6" />
                   <span>View Users</span>
                 </Link>

@@ -24,6 +24,19 @@ export interface UserProfile {
   qualifications: any | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  // Add subject assignment fields
+  tutor_subjects?: Array<{
+    subject_id: string
+    subject: { id: string; code: string; title: string }
+    is_lead_tutor: boolean
+    assigned_at: string
+  }>
+  enrolments?: Array<{
+    subject_id: string
+    subject: { id: string; code: string; title: string }
+    status: 'active' | 'completed' | 'dropped'
+    enrol_date: string
+  }>
 }
 
 export interface CreateUserData {
@@ -64,19 +77,45 @@ export interface UpdateUserData {
   emergency_contact_phone?: string
 }
 
+// Subject assignment interfaces
+export interface SubjectAssignment {
+  subject_id: string
+  is_lead_tutor?: boolean
+}
+
+export interface StudentEnrolment {
+  subject_id: string
+  status: 'active' | 'completed' | 'dropped'
+}
+
 export async function getUsers(
   search?: string,
   role?: UserRole,
   sortBy?: string,
   sortOrder?: 'asc' | 'desc',
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  subjectFilter?: string
 ) {
   const supabase = await createClient()
 
   let query = supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      tutor_subjects(
+        subject_id,
+        is_lead_tutor,
+        assigned_at,
+        subject:subjects(id, code, title)
+      ),
+      enrolments(
+        subject_id,
+        status,
+        enrol_date,
+        subject:subjects(id, code, title)
+      )
+    `)
 
   // Apply search filter
   if (search) {
@@ -86,6 +125,17 @@ export async function getUsers(
   // Apply role filter
   if (role) {
     query = query.eq('role', role)
+  }
+
+  // Apply subject filter
+  if (subjectFilter) {
+    if (role === 'tutor') {
+      // Filter tutors by assigned subjects
+      query = query.eq('tutor_subjects.subject_id', subjectFilter)
+    } else if (role === 'student') {
+      // Filter students by enrolled subjects
+      query = query.eq('enrolments.subject_id', subjectFilter)
+    }
   }
 
   // Apply sorting
@@ -119,6 +169,13 @@ export async function getUsers(
   if (role) {
     countQuery = countQuery.eq('role', role)
   }
+  if (subjectFilter) {
+    if (role === 'tutor') {
+      countQuery = countQuery.eq('tutor_subjects.subject_id', subjectFilter)
+    } else if (role === 'student') {
+      countQuery = countQuery.eq('enrolments.subject_id', subjectFilter)
+    }
+  }
 
   const { count: totalCount } = await countQuery
 
@@ -136,9 +193,10 @@ export async function getStudents(
   sortBy?: string,
   sortOrder?: 'asc' | 'desc',
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  subjectFilter?: string
 ) {
-  return getUsers(search, 'student', sortBy, sortOrder, page, pageSize)
+  return getUsers(search, 'student', sortBy, sortOrder, page, pageSize, subjectFilter)
 }
 
 export async function getTutors(
@@ -146,9 +204,10 @@ export async function getTutors(
   sortBy?: string,
   sortOrder?: 'asc' | 'desc',
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  subjectFilter?: string
 ) {
-  return getUsers(search, 'tutor', sortBy, sortOrder, page, pageSize)
+  return getUsers(search, 'tutor', sortBy, sortOrder, page, pageSize, subjectFilter)
 }
 
 export async function getAdmins(
@@ -166,7 +225,21 @@ export async function getUserById(id: string) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select(`
+      *,
+      tutor_subjects(
+        subject_id,
+        is_lead_tutor,
+        assigned_at,
+        subject:subjects(id, code, title)
+      ),
+      enrolments(
+        subject_id,
+        status,
+        enrol_date,
+        subject:subjects(id, code, title)
+      )
+    `)
     .eq('id', id)
     .single()
 
@@ -233,7 +306,7 @@ export async function createUser(userData: CreateUserData) {
     throw new Error('Failed to create user profile')
   }
 
-  revalidatePath('/dashboard/Users')
+  revalidatePath('/dashboard/users')
   return profileResult as UserProfile
 }
 
@@ -252,8 +325,8 @@ export async function updateUser(id: string, userData: UpdateUserData) {
     throw new Error('Failed to update user')
   }
 
-  revalidatePath('/dashboard/Users')
-  revalidatePath(`/dashboard/Users/${id}`)
+  revalidatePath('/dashboard/users')
+  revalidatePath(`/dashboard/users/${id}`)
   return data as UserProfile
 }
 
@@ -280,5 +353,94 @@ export async function deleteUser(id: string) {
     console.warn('Auth user deletion failed, but profile was deleted')
   }
 
-  revalidatePath('/dashboard/Users')
+  revalidatePath('/dashboard/users')
+}
+
+// Subject assignment functions
+export async function getAvailableSubjects() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('subjects')
+    .select('id, code, title')
+    .order('code')
+  
+  if (error) {
+    console.error('Error fetching subjects:', error)
+    throw new Error('Failed to fetch subjects')
+  }
+  
+  return data
+}
+
+export async function assignTutorToSubjects(tutorId: string, assignments: SubjectAssignment[]) {
+  const supabase = await createClient()
+  
+  // First, remove existing assignments
+  const { error: deleteError } = await supabase
+    .from('tutor_subjects')
+    .delete()
+    .eq('tutor_id', tutorId)
+  
+  if (deleteError) {
+    console.error('Error removing existing tutor assignments:', deleteError)
+    throw new Error('Failed to update tutor assignments')
+  }
+  
+  // Then add new assignments
+  if (assignments.length > 0) {
+    const tutorSubjects = assignments.map(assignment => ({
+      tutor_id: tutorId,
+      subject_id: assignment.subject_id,
+      is_lead_tutor: assignment.is_lead_tutor || false
+    }))
+    
+    const { error: insertError } = await supabase
+      .from('tutor_subjects')
+      .insert(tutorSubjects)
+    
+    if (insertError) {
+      console.error('Error assigning tutor to subjects:', insertError)
+      throw new Error('Failed to assign tutor to subjects')
+    }
+  }
+  
+  revalidatePath('/dashboard/users')
+  revalidatePath(`/dashboard/users/${tutorId}`)
+}
+
+export async function enrollStudentInSubjects(studentId: string, enrolments: StudentEnrolment[]) {
+  const supabase = await createClient()
+  
+  // First, remove existing enrolments
+  const { error: deleteError } = await supabase
+    .from('enrolments')
+    .delete()
+    .eq('student_id', studentId)
+  
+  if (deleteError) {
+    console.error('Error removing existing student enrolments:', deleteError)
+    throw new Error('Failed to update student enrolments')
+  }
+  
+  // Then add new enrolments
+  if (enrolments.length > 0) {
+    const studentEnrolments = enrolments.map(enrolment => ({
+      student_id: studentId,
+      subject_id: enrolment.subject_id,
+      status: enrolment.status || 'active'
+    }))
+    
+    const { error: insertError } = await supabase
+      .from('enrolments')
+      .insert(studentEnrolments)
+    
+    if (insertError) {
+      console.error('Error enrolling student in subjects:', insertError)
+      throw new Error('Failed to enroll student in subjects')
+    }
+  }
+  
+  revalidatePath('/dashboard/users')
+  revalidatePath(`/dashboard/users/${studentId}`)
 } 

@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -45,8 +52,9 @@ import {
   School,
   Mail,
   Phone,
+  BookOpen,
 } from "lucide-react";
-import { UserProfile, deleteUser } from "@/lib/user-actions";
+import { UserProfile, deleteUser, getAvailableSubjects } from "@/lib/user-actions";
 
 interface StudentListProps {
   students: UserProfile[];
@@ -56,6 +64,7 @@ interface StudentListProps {
   searchQuery?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  subjectFilter?: string;
   userRole: 'admin' | 'tutor'; // Who is viewing this list
   showActions?: boolean; // Whether to show CRUD actions
 }
@@ -75,6 +84,7 @@ export function StudentList({
   searchQuery = '',
   sortBy = 'first_name',
   sortOrder = 'asc',
+  subjectFilter,
   userRole,
   showActions = true
 }: StudentListProps) {
@@ -83,6 +93,8 @@ export function StudentList({
   const [isPending, startTransition] = useTransition();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<UserProfile | null>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<Array<{id: string, code: string, title: string}>>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
 
   const updateSearchParams = (updates: Record<string, string | undefined>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -107,10 +119,31 @@ export function StudentList({
     updateSearchParams({ search: value || undefined });
   };
 
+  const handleSubjectFilter = (value: string) => {
+    updateSearchParams({ subject: value === 'all' ? undefined : value });
+  };
+
   const handleSort = (column: string) => {
     const newSortOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc';
     updateSearchParams({ sortBy: column, sortOrder: newSortOrder });
   };
+
+  // Load available subjects
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setIsLoadingSubjects(true);
+        const subjects = await getAvailableSubjects();
+        setAvailableSubjects(subjects || []);
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+      } finally {
+        setIsLoadingSubjects(false);
+      }
+    };
+
+    loadSubjects();
+  }, []);
 
   const handlePageChange = (page: number) => {
     updateSearchParams({ page: page.toString() });
@@ -175,24 +208,46 @@ export function StudentList({
           <Badge variant="secondary">{totalCount} total</Badge>
         </div>
         {userRole === 'admin' && showActions && (
-          <Button onClick={() => router.push('/dashboard/Users/create?role=student')}>
+          <Button onClick={() => router.push('/dashboard/users/create?role=student')}>
             <Plus className="w-4 h-4 mr-2" />
             Add Student
           </Button>
         )}
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search students..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search students..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Select value={subjectFilter || 'all'} onValueChange={handleSubjectFilter}>
+              <SelectTrigger className="w-full sm:w-48">
+                <BookOpen className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by subject" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subjects</SelectItem>
+                {isLoadingSubjects ? (
+                  <SelectItem value="loading" disabled>Loading subjects...</SelectItem>
+                ) : (
+                  availableSubjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.code} - {subject.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +331,7 @@ export function StudentList({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => router.push(`/dashboard/Users/${student.id}`)}
+                              onClick={() => router.push(`/dashboard/users/${student.id}`)}
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               View
@@ -284,7 +339,7 @@ export function StudentList({
                             {userRole === 'admin' && (
                               <>
                                 <DropdownMenuItem
-                                  onClick={() => router.push(`/dashboard/Users/${student.id}/edit`)}
+                                  onClick={() => router.push(`/dashboard/users/${student.id}/edit`)}
                                 >
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit

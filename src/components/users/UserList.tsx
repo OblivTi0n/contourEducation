@@ -50,6 +50,8 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
+  Crown,
 } from "lucide-react";
 import { UserProfile, UserRole, deleteUser } from "@/lib/user-actions";
 
@@ -110,7 +112,7 @@ export function UserList({
       params.set('page', '1');
     }
     
-    router.push(`/dashboard/Users?${params.toString()}`);
+    router.push(`/dashboard/users?${params.toString()}`);
   };
 
   const handleSearch = (value: string) => {
@@ -161,6 +163,20 @@ export function UserList({
     return (firstName + lastName).toUpperCase() || '?';
   };
 
+  const getUserSubjects = (user: UserProfile) => {
+    if (user.role === 'tutor' && user.tutor_subjects) {
+      return user.tutor_subjects.map(ts => ({
+        ...ts.subject,
+        is_lead_tutor: ts.is_lead_tutor
+      }));
+    } else if (user.role === 'student' && user.enrolments) {
+      return user.enrolments
+        .filter(e => e.status === 'active')
+        .map(e => e.subject);
+    }
+    return [];
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -170,7 +186,7 @@ export function UserList({
           <h1 className="text-2xl font-bold">Users</h1>
           <Badge variant="secondary">{totalCount} total</Badge>
         </div>
-        <Button onClick={() => router.push('/dashboard/Users/create')}>
+        <Button onClick={() => router.push('/dashboard/users/create')}>
           <Plus className="w-4 h-4 mr-2" />
           Add User
         </Button>
@@ -231,6 +247,7 @@ export function UserList({
                     </TableHead>
                   ))}
                   <TableHead>Contact</TableHead>
+                  <TableHead>Subjects</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -264,6 +281,26 @@ export function UserList({
                     </TableCell>
                     <TableCell>{user.phone_number || 'N/A'}</TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-xs">
+                        {getUserSubjects(user).length === 0 ? (
+                          <span className="text-xs text-muted-foreground">No subjects assigned</span>
+                        ) : (
+                          getUserSubjects(user).map((subject: any) => (
+                            <Badge 
+                              key={subject.id} 
+                              variant="outline" 
+                              className="text-xs flex items-center gap-1"
+                            >
+                              {subject.code}
+                              {user.role === 'tutor' && subject.is_lead_tutor && (
+                                <Crown className="w-2 h-2" />
+                              )}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm">
@@ -272,13 +309,13 @@ export function UserList({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => router.push(`/dashboard/Users/${user.id}`)}
+                            onClick={() => router.push(`/dashboard/users/${user.id}`)}
                           >
                             <Eye className="w-4 h-4 mr-2" />
                             View
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => router.push(`/dashboard/Users/${user.id}/edit`)}
+                            onClick={() => router.push(`/dashboard/users/${user.id}/edit`)}
                           >
                             <Edit className="w-4 h-4 mr-2" />
                             Edit

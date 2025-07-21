@@ -126,7 +126,7 @@ export const LessonList: React.FC<LessonListProps> = ({
   };
 
   const canManageLessons = userRole === 'admin' || userRole === 'tutor';
-  const canCreateLessons = userRole === 'admin';
+  const canCreateLessons = userRole === 'admin' || userRole === 'tutor';
 
   return (
     <div className="space-y-6">

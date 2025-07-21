@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   Users,
   Briefcase,
+  BookOpen,
+  Crown,
 } from 'lucide-react'
 
 interface UserDetailPageProps {
@@ -73,7 +75,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/Users">
+                <Link href="/dashboard/users">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Users
                 </Link>
@@ -92,7 +94,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
               </div>
             </div>
             <Button asChild>
-              <Link href={`/dashboard/Users/${user.id}/edit`}>
+              <Link href={`/dashboard/users/${user.id}/edit`}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit User
               </Link>
@@ -184,6 +186,91 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
             </Card>
           )}
 
+          {/* Subject Assignments */}
+          {(user.role === 'tutor' || user.role === 'student') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BookOpen className="w-5 h-5" />
+                  <span>
+                    {user.role === 'tutor' ? 'Subject Assignments' : 'Subject Enrolments'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {user.role === 'tutor' && user.tutor_subjects && user.tutor_subjects.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Subjects this tutor is currently Tutoring
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {user.tutor_subjects.map((assignment) => (
+                        <div
+                          key={assignment.subject_id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {assignment.subject.code} - {assignment.subject.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Assigned: {new Date(assignment.assigned_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          {assignment.is_lead_tutor && (
+                            <Badge variant="default" className="text-xs flex items-center gap-1">
+                              <Crown className="w-3 h-3" />
+                              Lead Tutor
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : user.role === 'student' && user.enrolments && user.enrolments.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Subjects this student is enrolled in
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {user.enrolments.map((enrolment) => (
+                        <div
+                          key={enrolment.subject_id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div>
+                            <div className="font-medium">
+                              {enrolment.subject.code} - {enrolment.subject.title}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Enrolled: {new Date(enrolment.enrol_date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <Badge 
+                            variant={enrolment.status === 'active' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {enrolment.status.charAt(0).toUpperCase() + enrolment.status.slice(1)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <BookOpen className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">
+                      {user.role === 'tutor' 
+                        ? 'No subjects assigned' 
+                        : 'No subjects enrolled'
+                      }
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Emergency Contact */}
           {(user.emergency_contact_name || user.emergency_contact_phone) && (
             <Card>
@@ -210,13 +297,13 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
             <CardContent>
               <div className="flex space-x-4">
                 <Button asChild>
-                  <Link href={`/dashboard/Users/${user.id}/edit`}>
+                  <Link href={`/dashboard/users/${user.id}/edit`}>
                     <Edit className="w-4 h-4 mr-2" />
                     Edit User
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <Link href="/dashboard/Users">
+                  <Link href="/dashboard/users">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Users
                   </Link>

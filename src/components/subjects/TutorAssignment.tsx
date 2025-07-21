@@ -252,7 +252,9 @@ export const TutorAssignment = ({ subject, availableTutors }: TutorAssignmentPro
             </div>
           ) : (
             <div className="space-y-4">
-              {subject.tutor_subjects.map((assignment) => (
+              {subject.tutor_subjects
+                .filter((assignment) => assignment.profiles !== null)
+                .map((assignment) => (
                 <div
                   key={assignment.tutor_id}
                   className="flex items-center justify-between p-4 border rounded-lg"

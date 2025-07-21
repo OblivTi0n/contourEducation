@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   User,
   Mail,
@@ -27,8 +28,22 @@ import {
   Users,
   Save,
   X,
+  BookOpen,
+  Crown,
 } from "lucide-react";
-import { CreateUserData, UpdateUserData, UserProfile, UserRole, createUser, updateUser } from "@/lib/user-actions";
+import { 
+  CreateUserData, 
+  UpdateUserData, 
+  UserProfile, 
+  UserRole, 
+  SubjectAssignment,
+  StudentEnrolment,
+  createUser, 
+  updateUser,
+  getAvailableSubjects,
+  assignTutorToSubjects,
+  enrollStudentInSubjects
+} from "@/lib/user-actions";
 
 interface UserFormProps {
   user?: UserProfile;
@@ -52,6 +67,12 @@ interface FormData {
   bio: string;
   emergency_contact_name: string;
   emergency_contact_phone: string;
+}
+
+interface Subject {
+  id: string;
+  code: string;
+  title: string;
 }
 
 const initialFormData: FormData = {
@@ -108,6 +129,76 @@ export function UserForm({ user, mode }: UserFormProps) {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Subject assignment state
+  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
+  const [tutorSubjects, setTutorSubjects] = useState<SubjectAssignment[]>([]);
+  const [studentEnrolments, setStudentEnrolments] = useState<StudentEnrolment[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+
+  // Load available subjects on component mount
+  useEffect(() => {
+    const loadSubjects = async () => {
+      try {
+        setIsLoadingSubjects(true);
+        const subjects = await getAvailableSubjects();
+        setAvailableSubjects(subjects || []);
+      } catch (error) {
+        console.error('Error loading subjects:', error);
+      } finally {
+        setIsLoadingSubjects(false);
+      }
+    };
+
+    loadSubjects();
+  }, []);
+
+  // Initialize subject assignments for edit mode
+  useEffect(() => {
+    if (mode === 'edit' && user) {
+      // Initialize tutor subjects
+      if (user.role === 'tutor' && user.tutor_subjects && Array.isArray(user.tutor_subjects)) {
+        const mappedTutorSubjects = user.tutor_subjects.map(ts => ({
+          subject_id: ts.subject_id,
+          is_lead_tutor: ts.is_lead_tutor
+        }));
+        setTutorSubjects(mappedTutorSubjects);
+      } else if (user.role === 'tutor') {
+        setTutorSubjects([]);
+      }
+      
+      // Initialize student enrolments
+      if (user.role === 'student' && user.enrolments && Array.isArray(user.enrolments)) {
+        const mappedEnrolments = user.enrolments.map(e => ({
+          subject_id: e.subject_id,
+          status: e.status
+        }));
+        setStudentEnrolments(mappedEnrolments);
+      } else if (user.role === 'student') {
+        setStudentEnrolments([]);
+      }
+    }
+  }, [mode, user]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('UserForm Debug:', {
+      mode,
+      userRole: user?.role,
+      userEnrolments: user?.enrolments,
+      userTutorSubjects: user?.tutor_subjects,
+      studentEnrolments,
+      tutorSubjects,
+      availableSubjects: availableSubjects.length,
+      isLoadingSubjects
+    });
+  }, [mode, user, studentEnrolments, tutorSubjects, availableSubjects, isLoadingSubjects]);
+
+  // Clear subject assignments when role changes
+  useEffect(() => {
+    setTutorSubjects([]);
+    setStudentEnrolments([]);
+  }, [formData.role]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -187,7 +278,14 @@ export function UserForm({ user, mode }: UserFormProps) {
             emergency_contact_name: formData.emergency_contact_name || undefined,
             emergency_contact_phone: formData.emergency_contact_phone || undefined,
           };
-          await createUser(createData);
+          const createdUser = await createUser(createData);
+          
+          // Handle subject assignments for newly created user
+          if (formData.role === 'tutor' && tutorSubjects.length > 0) {
+            await assignTutorToSubjects(createdUser.id, tutorSubjects);
+          } else if (formData.role === 'student' && studentEnrolments.length > 0) {
+            await enrollStudentInSubjects(createdUser.id, studentEnrolments);
+          }
         } else if (user) {
           const updateData: UpdateUserData = {
             first_name: formData.first_name,
@@ -206,9 +304,16 @@ export function UserForm({ user, mode }: UserFormProps) {
             emergency_contact_phone: formData.emergency_contact_phone || undefined,
           };
           await updateUser(user.id, updateData);
+          
+          // Handle subject assignments for updated user
+          if (formData.role === 'tutor') {
+            await assignTutorToSubjects(user.id, tutorSubjects);
+          } else if (formData.role === 'student') {
+            await enrollStudentInSubjects(user.id, studentEnrolments);
+          }
         }
         
-        router.push('/dashboard/Users');
+        router.push('/dashboard/users');
         router.refresh();
       } catch (error) {
         console.error('Error saving user:', error);
@@ -239,6 +344,67 @@ export function UserForm({ user, mode }: UserFormProps) {
     tutor: "bg-blue-100 text-blue-800",
     student: "bg-green-100 text-green-800",
   } as const;
+
+  // Subject assignment helper functions
+  const handleTutorSubjectToggle = (subjectId: string) => {
+    setTutorSubjects(prev => {
+      const exists = prev.find(ts => ts.subject_id === subjectId);
+      if (exists) {
+        return prev.filter(ts => ts.subject_id !== subjectId);
+      } else {
+        return [...prev, { subject_id: subjectId, is_lead_tutor: false }];
+      }
+    });
+  };
+
+  const handleTutorLeadToggle = (subjectId: string) => {
+    setTutorSubjects(prev =>
+      prev.map(ts =>
+        ts.subject_id === subjectId
+          ? { ...ts, is_lead_tutor: !ts.is_lead_tutor }
+          : ts
+      )
+    );
+  };
+
+  const handleStudentEnrolmentToggle = (subjectId: string) => {
+    setStudentEnrolments(prev => {
+      const exists = prev.find(e => e.subject_id === subjectId);
+      if (exists) {
+        return prev.filter(e => e.subject_id !== subjectId);
+      } else {
+        return [...prev, { subject_id: subjectId, status: 'active' }];
+      }
+    });
+  };
+
+  const handleStudentStatusChange = (subjectId: string, status: 'active' | 'completed' | 'dropped') => {
+    setStudentEnrolments(prev =>
+      prev.map(e =>
+        e.subject_id === subjectId
+          ? { ...e, status }
+          : e
+      )
+    );
+  };
+
+  const isSubjectAssignedToTutor = (subjectId: string) => {
+    return tutorSubjects.some(ts => ts.subject_id === subjectId);
+  };
+
+  const isTutorLeadForSubject = (subjectId: string) => {
+    const assignment = tutorSubjects.find(ts => ts.subject_id === subjectId);
+    return assignment?.is_lead_tutor || false;
+  };
+
+  const isStudentEnrolledInSubject = (subjectId: string) => {
+    return studentEnrolments.some(e => e.subject_id === subjectId);
+  };
+
+  const getStudentEnrolmentStatus = (subjectId: string) => {
+    const enrolment = studentEnrolments.find(e => e.subject_id === subjectId);
+    return enrolment?.status || 'active';
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -490,6 +656,167 @@ export function UserForm({ user, mode }: UserFormProps) {
                   <p className="text-sm text-red-600">{errors.bio}</p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Subject Assignments for Tutors */}
+        {formData.role === 'tutor' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <BookOpen className="w-5 h-5" />
+                <span>Subject Assignments</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Select the subjects this tutor is qualified to teach
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingSubjects ? (
+                <p className="text-sm text-muted-foreground">Loading subjects...</p>
+              ) : availableSubjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No subjects available</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {availableSubjects.map((subject) => (
+                    <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <Checkbox
+                        id={`tutor-subject-${subject.id}`}
+                        checked={isSubjectAssignedToTutor(subject.id)}
+                        onCheckedChange={() => handleTutorSubjectToggle(subject.id)}
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`tutor-subject-${subject.id}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {subject.code} - {subject.title}
+                        </label>
+                        {isSubjectAssignedToTutor(subject.id) && (
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Checkbox
+                              id={`lead-tutor-${subject.id}`}
+                              checked={isTutorLeadForSubject(subject.id)}
+                              onCheckedChange={() => handleTutorLeadToggle(subject.id)}
+                            />
+                            <label
+                              htmlFor={`lead-tutor-${subject.id}`}
+                              className="text-xs text-muted-foreground cursor-pointer flex items-center"
+                            >
+                              <Crown className="w-3 h-3 mr-1" />
+                              Lead tutor for this subject
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {tutorSubjects.length > 0 && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">
+                    Selected Subjects ({tutorSubjects.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {tutorSubjects.map((assignment) => {
+                      const subject = availableSubjects.find(s => s.id === assignment.subject_id);
+                      if (!subject) return null;
+                      return (
+                        <Badge key={assignment.subject_id} variant="secondary">
+                          {subject.code}
+                          {assignment.is_lead_tutor && (
+                            <Crown className="w-3 h-3 ml-1" />
+                          )}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Subject Enrolments for Students */}
+        {formData.role === 'student' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <BookOpen className="w-5 h-5" />
+                <span>Subject Enrolments</span>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Select the subjects this student is enrolled in
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingSubjects ? (
+                <p className="text-sm text-muted-foreground">Loading subjects...</p>
+              ) : availableSubjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No subjects available</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {availableSubjects.map((subject) => (
+                    <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                      <Checkbox
+                        id={`student-subject-${subject.id}`}
+                        checked={isStudentEnrolledInSubject(subject.id)}
+                        onCheckedChange={() => handleStudentEnrolmentToggle(subject.id)}
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`student-subject-${subject.id}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {subject.code} - {subject.title}
+                        </label>
+                        {isStudentEnrolledInSubject(subject.id) && (
+                          <div className="mt-2">
+                            <Select
+                              value={getStudentEnrolmentStatus(subject.id)}
+                              onValueChange={(status: 'active' | 'completed' | 'dropped') =>
+                                handleStudentStatusChange(subject.id, status)
+                              }
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="dropped">Dropped</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {studentEnrolments.length > 0 && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">
+                    Enrolled Subjects ({studentEnrolments.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {studentEnrolments.map((enrolment) => {
+                      const subject = availableSubjects.find(s => s.id === enrolment.subject_id);
+                      if (!subject) return null;
+                      return (
+                        <Badge 
+                          key={enrolment.subject_id} 
+                          variant={enrolment.status === 'active' ? 'default' : 'secondary'}
+                        >
+                          {subject.code} ({enrolment.status})
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -1,60 +1,185 @@
-"use client";
-
 import { StatCard } from "./StatCard";
 import { UpcomingLessons } from "./UpcomingLessons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Users, BookOpen, Clock, Plus, Upload } from "lucide-react";
+import { Calendar, Users, BookOpen, Plus, Eye } from "lucide-react";
+import Link from "next/link";
+import { createClient } from '@/lib/supabase-server';
+import { fetchLessons } from '@/lib/lesson-actions';
+import { getUsers } from '@/lib/user-actions';
+import { redirect } from 'next/navigation';
 
-// Mock data
-const mockLessons = [
-  {
-    id: "1",
-    title: "VCE Math Methods - Calculus",
-    subject: "Math Methods 3/4",
-    date: "2024-07-22",
-    time: "2:00 PM",
-    location: "Room 101",
-    type: "in-person" as const,
-    instructor: "You",
-    students: 8
-  },
-  {
-    id: "2",
-    title: "VCE Chemistry - Organic Chemistry",
-    subject: "Chemistry 3/4",
-    date: "2024-07-22",
-    time: "4:00 PM",
-    location: "Virtual Classroom",
-    type: "online" as const,
-    instructor: "You",
-    students: 12
-  },
-  {
-    id: "3",
-    title: "VCE Math Methods - Functions",
-    subject: "Math Methods 3/4",
-    date: "2024-07-23",
-    time: "10:00 AM",
-    location: "Room 102",
-    type: "in-person" as const,
-    instructor: "You",
-    students: 6
+// Helper function to decode JWT
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error decoding JWT:', error);
+    return null;
   }
-];
+}
 
-const mockStudents = [
-  { id: "1", name: "Emma Wilson", subjects: ["Math Methods", "Chemistry"] },
-  { id: "2", name: "James Parker", subjects: ["Math Methods"] },
-  { id: "3", name: "Sophie Chen", subjects: ["Chemistry"] },
-  { id: "4", name: "Alex Thompson", subjects: ["Math Methods", "Chemistry"] }
-];
+export const TutorDashboard = async () => {
+  const supabase = await createClient();
+  
+  // Get the current session
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error || !session) {
+    redirect('/login');
+  }
 
-export const TutorDashboard = () => {
-  return (
-    <div className="space-y-8">
+  const user = session.user;
+  let userRole: string = 'student'; // Default fallback
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token);
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role;
+    }
+  }
+
+  // Ensure this is actually a tutor
+  if (userRole !== 'tutor') {
+    redirect('/dashboard');
+  }
+
+  try {
+    // Fetch tutor's lessons
+    const lessonsResult = await fetchLessons(
+      1, // page
+      50, // limit - get more to show variety
+      undefined, // search
+      'start_time', // sortBy
+      'asc', // sortOrder
+      undefined, // status
+      undefined, // subject_id
+      undefined, // campus_id
+      'tutor', // user_role
+      user.id // user_id
+    );
+
+    // Get today's date
+    const today = new Date().toISOString().split('T')[0];
+    const todaysLessons = lessonsResult.data.filter(lesson => 
+      lesson.start_time.split('T')[0] === today
+    );
+
+    // Get unique student IDs from tutor's lessons
+    const studentIds = new Set<string>();
+    lessonsResult.data.forEach(lesson => {
+      lesson.students?.forEach(student => {
+        if (student.id) studentIds.add(student.id);
+      });
+    });
+
+    // Get unique subject IDs from tutor's lessons
+    const subjectIds = new Set<string>();
+    lessonsResult.data.forEach(lesson => {
+      if (lesson.subject_id) subjectIds.add(lesson.subject_id);
+    });
+
+    // Fetch subjects this tutor teaches
+    const { data: tutorSubjects, error: subjectsError } = await supabase
+      .from('tutor_subjects')
+      .select(`
+        subject:subjects(id, code, title)
+      `)
+      .eq('tutor_id', user.id);
+
+    const subjects = tutorSubjects?.map(ts => ts.subject).filter(subject => subject != null) || [];
+
+    // Get students from tutor's subjects via enrollments
+    let allStudents: any[] = [];
+    if (subjects.length > 0) {
+      const subjectIdsFromAssignments = subjects.map((s: any) => s?.id).filter(Boolean);
+      
+      const { data: enrollments } = await supabase
+        .from('enrolments')
+        .select(`
+          student:profiles!enrolments_student_id_fkey(
+            id, first_name, last_name, role
+          ),
+          subject:subjects(id, code, title)
+        `)
+        .in('subject_id', subjectIdsFromAssignments)
+        .eq('status', 'active');
+
+      allStudents = enrollments?.map((e: any) => ({
+        ...e.student,
+        subjects: [(e.subject as any)?.title || (e.subject as any)?.code || 'Unknown']
+      })).filter(Boolean) || [];
+
+      // Remove duplicates and aggregate subjects
+      const studentMap = new Map();
+      allStudents.forEach(student => {
+        if (studentMap.has(student.id)) {
+          studentMap.get(student.id).subjects = [
+            ...new Set([...studentMap.get(student.id).subjects, ...student.subjects])
+          ];
+        } else {
+          studentMap.set(student.id, student);
+        }
+      });
+      allStudents = Array.from(studentMap.values());
+    }
+
+    // Transform lessons to match UpcomingLessons component format
+    const upcomingLessons = lessonsResult.data.slice(0, 5).map(lesson => {
+      const startDate = new Date(lesson.start_time);
+      const formattedDate = startDate.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric' 
+      });
+      const formattedTime = startDate.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      });
+      
+      // Build location string with campus name and room
+      let location = 'TBA';
+      if (lesson.location_detail) {
+        location = lesson.location_detail; // Online lessons
+      } else if (lesson.campus?.name && lesson.room?.name) {
+        location = `${lesson.campus.name}, ${lesson.room.name}`;
+      } else if (lesson.campus?.name) {
+        location = lesson.campus.name;
+      } else if (lesson.room?.name) {
+        location = lesson.room.name;
+      } else if (lesson.location) {
+        location = lesson.location;
+      }
+
+      return {
+        id: lesson.id,
+        title: lesson.title,
+        subject: lesson.subject?.title || lesson.subject?.code || 'Unknown Subject',
+        date: startDate.toISOString().split('T')[0],
+        time: `${formattedDate} at ${formattedTime}`,
+        location,
+        type: lesson.location_detail ? 'online' as const : 'in-person' as const,
+        instructor: 'You',
+        students: lesson.students?.length || 0
+      };
+    });
+
+    return (
+      <div className="space-y-8">
         {/* Welcome Section */}
         <div className="text-center space-y-4 animate-fade-in">
           <h1 className="text-4xl font-bold text-foreground">Welcome back, Tutor!</h1>
@@ -65,23 +190,23 @@ export const TutorDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
           <StatCard
             title="Today's Lessons"
-            value={mockLessons.filter(l => l.date === "2024-07-22").length}
+            value={todaysLessons.length}
             description="Scheduled for today"
-            icon={Calendar}
+            iconName="Calendar"
             gradient
           />
           <StatCard
             title="Total Students"
-            value={mockStudents.length}
+            value={allStudents.length}
             description="Active students"
-            icon={Users}
+            iconName="Users"
             color="success"
           />
           <StatCard
             title="Subjects Teaching"
-            value="2"
-            description="Math & Chemistry"
-            icon={BookOpen}
+            value={subjects.length}
+            description={subjects.length > 0 ? subjects.map((s: any) => s?.code).join(', ') : 'No subjects'}
+            iconName="BookOpen"
             color="primary"
           />
         </div>
@@ -93,13 +218,17 @@ export const TutorDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button className="h-20 flex-col space-y-2">
-                <Plus className="w-6 h-6" />
-                <span>Schedule Lesson</span>
+              <Button className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/lessons/create">
+                  <Plus className="w-6 h-6" />
+                  <span>Schedule Lesson</span>
+                </Link>
               </Button>
-              <Button variant="outline" className="h-20 flex-col space-y-2">
-                <Upload className="w-6 h-6" />
-                <span>Upload Resources</span>
+              <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
+                <Link href="/dashboard/users/students">
+                  <Eye className="w-6 h-6" />
+                  <span>View Students</span>
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -108,7 +237,7 @@ export const TutorDashboard = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upcoming Lessons */}
-          <UpcomingLessons lessons={mockLessons} userRole="tutor" />
+          <UpcomingLessons lessons={upcomingLessons} userRole="tutor" />
 
           {/* Student Overview */}
           <Card className="animate-fade-in">
@@ -119,69 +248,66 @@ export const TutorDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Avatar>
-                      <AvatarFallback>{student.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium">{student.name}</h4>
-                      <div className="flex items-center space-x-2">
-                        {student.subjects.map((subject) => (
-                          <Badge key={subject} variant="secondary" className="text-xs">
-                            {subject}
-                          </Badge>
-                        ))}
+              {allStudents.length > 0 ? (
+                <>
+                  {allStudents.slice(0, 4).map((student) => (
+                    <div
+                      key={student.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {`${student.first_name?.charAt(0) || ''}${student.last_name?.charAt(0) || ''}`.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium">
+                            {`${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown Student'}
+                          </h4>
+                          <div className="flex items-center space-x-2">
+                            {student.subjects?.slice(0, 2).map((subject: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {subject}
+                              </Badge>
+                            ))}
+                            {student.subjects?.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{student.subjects.length - 2} more
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                  <Button className="w-full" variant="outline" asChild>
+                    <Link href="/dashboard/users/students">
+                      View All Students
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No students assigned yet</p>
+                  <p className="text-sm">Students will appear when they enroll in your subjects</p>
                 </div>
-              ))}
-              <Button className="w-full" variant="outline">
-                View All Students
-              </Button>
+              )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Today's Schedule */}
-        <Card className="animate-scale-in">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-primary" />
-              <span>Today's Schedule</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {mockLessons
-                .filter(lesson => lesson.date === "2024-07-22")
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((lesson) => (
-                <div key={lesson.id} className="flex items-center space-x-4 p-4 border rounded-lg">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{lesson.time.split(':')[0]}</div>
-                    <div className="text-sm text-muted-foreground">{lesson.time.split(' ')[1]}</div>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold">{lesson.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {lesson.location} • {lesson.students} students
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline">View</Button>
-                    <Button size="sm">Start</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
-  );
+    );
+  } catch (error) {
+    console.error('Error loading tutor dashboard data:', error);
+    return (
+      <div className="space-y-8">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-foreground">Welcome back, Tutor!</h1>
+          <p className="text-xl text-destructive">Unable to load dashboard data. Please try again.</p>
+        </div>
+      </div>
+    );
+  }
 }; 
