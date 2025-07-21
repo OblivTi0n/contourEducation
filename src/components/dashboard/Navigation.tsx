@@ -36,7 +36,8 @@ export const Navigation = () => {
     const getNavigationItems = () => {
       const baseItems = [
         { label: "Dashboard", href: `/dashboard`, icon: Home },
-        { label: "Lessons", href: `/dashboard/lessons`, icon: Calendar },
+        { label: "Schedule", href: `/dashboard/schedule`, icon: Calendar },
+        { label: "Lessons", href: `/dashboard/lessons`, icon: FolderOpen },
       ];
 
       if (userRole === "admin") {

@@ -189,7 +189,7 @@ export const TutorDashboard = async () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
           <StatCard
-            title="Today's Lessons"
+            title="Upcoming Lessons"
             value={todaysLessons.length}
             description="Scheduled for today"
             iconName="Calendar"

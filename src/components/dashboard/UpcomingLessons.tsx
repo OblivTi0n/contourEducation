@@ -32,7 +32,7 @@ export const UpcomingLessons: React.FC<UpcomingLessonsProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Calendar className="w-5 h-5 text-primary" />
-          <span>Today's Lessons</span>
+          <span>Upcoming Lessons</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
