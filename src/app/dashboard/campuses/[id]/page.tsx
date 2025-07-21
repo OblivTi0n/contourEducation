@@ -14,9 +14,9 @@ import {
 } from 'lucide-react'
 
 interface CampusDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 const statusColors = {
@@ -61,7 +61,8 @@ function InfoItem({
 
 export default async function CampusDetailPage({ params }: CampusDetailPageProps) {
   try {
-    const campus = await getCampusById(params.id)
+    const { id } = await params
+    const campus = await getCampusById(id)
     
     const getStatusBadge = (status: string) => {
       const normalizedStatus = status.toLowerCase() as keyof typeof statusColors;

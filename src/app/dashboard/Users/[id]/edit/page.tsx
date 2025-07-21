@@ -25,9 +25,9 @@ function decodeJWT(token: string) {
 }
 
 interface EditUserPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function EditUserPage({ params }: EditUserPageProps) {
@@ -54,12 +54,13 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
   // Authorization check: 
   // - Admins can edit all users
   // - Tutors and students can only edit their own profile
-  if (userRole !== 'admin' && currentUserId !== params.id) {
+  const { id } = await params;
+  if (userRole !== 'admin' && currentUserId !== id) {
     redirect('/dashboard')
   }
 
   try {
-    const user = await getUserById(params.id)
+    const user = await getUserById(id)
     
     return <UserForm 
       user={user} 

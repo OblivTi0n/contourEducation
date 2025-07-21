@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { createLesson, getAvailableTutors, getEnrolledStudents } from '@/lib/lesson-actions'
+import { createLesson, getAvailableTutors, getEnrolledStudents, CreateLessonData, UpdateLessonData } from '@/lib/lesson-actions'
 import { LessonForm } from '@/components/lessons/LessonForm'
 
 // Helper function to decode JWT and extract claims
@@ -67,9 +67,16 @@ export default async function CreateLessonPage() {
       
       // Extract subjects from the tutor_subjects relation and ensure proper typing
       const subjects = tutorSubjects
-        ?.map((ts: { subject: { id: string; code: string; title: string } }) => ts.subject)
-        .filter((subject: { id: string; code: string; title: string } | null) => subject && subject.id && subject.code && subject.title)
-        .sort((a: { code: string }, b: { code: string }) => a.code.localeCompare(b.code)) || []
+        ?.map((ts: unknown) => (ts as { subject: { id: string; code: string; title: string } }).subject)
+        .filter((subject: unknown) => {
+          const s = subject as { id: string; code: string; title: string } | null;
+          return s && s.id && s.code && s.title;
+        })
+        .sort((a: unknown, b: unknown) => {
+          const subjectA = a as { code: string };
+          const subjectB = b as { code: string };
+          return subjectA.code.localeCompare(subjectB.code);
+        }) || []
       
       subjectsResult = { data: subjects, error: null }
     } else {
@@ -123,10 +130,10 @@ export default async function CreateLessonPage() {
       getEnrolledStudents(), // Pass no subject ID to get all students initially
     ])
 
-    const handleSubmit = async (data: Record<string, unknown>) => {
+    const handleSubmit = async (data: CreateLessonData | UpdateLessonData) => {
       'use server'
       try {
-        await createLesson(data)
+        await createLesson(data as CreateLessonData)
       } catch (error) {
         console.error('Error creating lesson:', error)
         throw error

@@ -71,7 +71,7 @@ const SubjectListSkeleton = () => (
   </div>
 );
 
-async function SubjectsPageContent({ searchParams }: { searchParams: SearchParams }) {
+async function SubjectsPageContent({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const supabase = await createClient()
   
   // Check authentication and get user role
@@ -91,10 +91,11 @@ async function SubjectsPageContent({ searchParams }: { searchParams: SearchParam
     }
   }
 
-  const page = parseInt(searchParams.page || "1");
-  const search = searchParams.search;
-  const sortBy = searchParams.sortBy || "title";
-  const sortOrder = searchParams.sortOrder || "asc";
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const search = params.search;
+  const sortBy = params.sortBy || "title";
+  const sortOrder = params.sortOrder || "asc";
 
   try {
     const { data: subjects, count, totalPages } = await fetchSubjects(
@@ -130,7 +131,7 @@ async function SubjectsPageContent({ searchParams }: { searchParams: SearchParam
 export default function SubjectsPage({ 
   searchParams 
 }: { 
-  searchParams: SearchParams 
+  searchParams: Promise<SearchParams> 
 }) {
   return (
     <Suspense fallback={<SubjectListSkeleton />}>

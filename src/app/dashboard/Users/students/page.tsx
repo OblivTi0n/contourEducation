@@ -26,12 +26,12 @@ function decodeJWT(token: string) {
 }
 
 interface StudentsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     page?: string
-  }
+  }>
 }
 
 function StudentListSkeleton() {
@@ -74,10 +74,11 @@ function StudentListSkeleton() {
 }
 
 async function StudentsContent({ searchParams }: StudentsPageProps) {
-  const search = searchParams.search
-  const sortBy = searchParams.sortBy || 'first_name'
-  const sortOrder = searchParams.sortOrder || 'asc'
-  const page = parseInt(searchParams.page || '1')
+  const params = await searchParams;
+  const search = params.search
+  const sortBy = params.sortBy || 'first_name'
+  const sortOrder = params.sortOrder || 'asc'
+  const page = parseInt(params.page || '1')
 
   try {
     const result = await getStudents(search, sortBy, sortOrder, page)

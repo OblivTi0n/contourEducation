@@ -41,9 +41,9 @@ function decodeJWT(token: string) {
 }
 
 interface UserDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 const roleColors = {
@@ -99,12 +99,13 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   // - Admins can view all users
   // - Tutors can view all users but only edit their own profile
   // - Students can only view their own profile
-  if (userRole === 'student' && currentUserId !== params.id) {
+  const { id } = await params;
+  if (userRole === 'student' && currentUserId !== id) {
     redirect('/dashboard')
   }
 
   try {
-    const user = await getUserById(params.id)
+    const user = await getUserById(id)
     
     const getUserFullName = () => {
       return `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'No name';
@@ -150,11 +151,11 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
               </div>
             </div>
             {/* Only show edit button if user is admin or viewing their own profile */}
-            {(userRole === 'admin' || currentUserId === params.id) && (
+            {(userRole === 'admin' || currentUserId === id) && (
               <Button asChild>
                 <Link href={`/dashboard/users/${user.id}/edit`}>
                   <Edit className="w-4 h-4 mr-2" />
-                  {currentUserId === params.id ? 'Edit Profile' : 'Edit User'}
+                  {currentUserId === id ? 'Edit Profile' : 'Edit User'}
                 </Link>
               </Button>
             )}
@@ -176,7 +177,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                   <InfoItem icon={Phone} label="Phone Number" value={user.phone_number} />
                 </div>
                 <div className="space-y-4">
-                  <InfoItem icon={Users} label="Role" value={user.role.charAt(0).toUpperCase() + user.role.slice(1)} />
+                  <InfoItem icon={User} label="Role" value={user.role.charAt(0).toUpperCase() + user.role.slice(1)} />
                   <InfoItem icon={School} label="School" value={user.school_name} />
                   {user.role === 'student' && user.vce_year_level && (
                     <InfoItem icon={GraduationCap} label="VCE Year Level" value={`Year ${user.vce_year_level}`} />
@@ -356,11 +357,11 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
             <CardContent>
               <div className="flex space-x-4">
                 {/* Only show edit button if user is admin or viewing their own profile */}
-                {(userRole === 'admin' || currentUserId === params.id) && (
+                {(userRole === 'admin' || currentUserId === id) && (
                   <Button asChild>
                     <Link href={`/dashboard/users/${user.id}/edit`}>
                       <Edit className="w-4 h-4 mr-2" />
-                      {currentUserId === params.id ? 'Edit Profile' : 'Edit User'}
+                      {currentUserId === id ? 'Edit Profile' : 'Edit User'}
                     </Link>
                   </Button>
                 )}

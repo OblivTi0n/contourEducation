@@ -205,7 +205,7 @@ export const TutorAssignment = ({ subject, availableTutors }: TutorAssignmentPro
                         <Checkbox
                           id="lead-tutor"
                           checked={isLeadTutor}
-                          onCheckedChange={setIsLeadTutor}
+                          onCheckedChange={(checked) => setIsLeadTutor(checked === true)}
                         />
                         <Label htmlFor="lead-tutor" className="flex items-center gap-2">
                           <Crown className="w-4 h-4" />

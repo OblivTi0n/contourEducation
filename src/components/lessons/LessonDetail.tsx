@@ -157,7 +157,7 @@ export const LessonDetail: React.FC<LessonDetailProps> = ({
               {/* Status */}
               <div>
                 <div className="text-sm font-medium text-muted-foreground">Status</div>
-                <Badge className={statusColors[lesson.status]} size="lg">
+                <Badge className={statusColors[lesson.status]}>
                   {statusLabels[lesson.status]}
                 </Badge>
               </div>

@@ -5,12 +5,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface CampusesPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     page?: string
-  }
+  }>
 }
 
 function CampusListSkeleton() {
@@ -61,10 +61,11 @@ function CampusListSkeleton() {
 }
 
 async function CampusesContent({ searchParams }: CampusesPageProps) {
-  const search = searchParams.search
-  const sortBy = searchParams.sortBy || 'name'
-  const sortOrder = searchParams.sortOrder || 'asc'
-  const page = parseInt(searchParams.page || '1')
+  const params = await searchParams
+  const search = params.search
+  const sortBy = params.sortBy || 'name'
+  const sortOrder = params.sortOrder || 'asc'
+  const page = parseInt(params.page || '1')
 
   try {
     const result = await getCampuses(search, sortBy, sortOrder, page)

@@ -24,9 +24,9 @@ function decodeJWT(token: string) {
 }
 
 interface TutorAssignmentPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function TutorAssignmentPage({ params }: TutorAssignmentPageProps) {
@@ -54,8 +54,9 @@ export default async function TutorAssignmentPage({ params }: TutorAssignmentPag
     redirect('/dashboard/subjects')
   }
 
+  const { id } = await params;
   const [subject, availableTutors] = await Promise.all([
-    fetchSubjectById(params.id),
+    fetchSubjectById(id),
     fetchAvailableTutors(),
   ]);
 

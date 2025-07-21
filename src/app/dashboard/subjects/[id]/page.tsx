@@ -28,9 +28,9 @@ function decodeJWT(token: string) {
 }
 
 interface SubjectDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function SubjectDetailPage({ params }: SubjectDetailPageProps) {
@@ -53,7 +53,8 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
     }
   }
 
-  const subject = await fetchSubjectById(params.id);
+  const { id } = await params;
+  const subject = await fetchSubjectById(id);
 
   if (!subject) {
     notFound();
@@ -94,13 +95,13 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
           {userRole === 'admin' && (
             <div className="flex gap-2">
               <Button variant="outline" asChild>
-                <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                <Link href={`/dashboard/subjects/${id}/tutors`}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   Manage Tutors
                 </Link>
               </Button>
               <Button asChild>
-                <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                <Link href={`/dashboard/subjects/${id}/edit`}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Subject
                 </Link>
@@ -147,7 +148,7 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
                     <Users className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground mb-2">No tutors assigned</p>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                      <Link href={`/dashboard/subjects/${id}/tutors`}>
                         <UserPlus className="w-4 h-4 mr-2" />
                         Assign Tutors
                       </Link>
@@ -223,13 +224,13 @@ export default async function SubjectDetailPage({ params }: SubjectDetailPagePro
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
-                  <Link href={`/dashboard/subjects/${subject.id}/tutors`}>
+                  <Link href={`/dashboard/subjects/${id}/tutors`}>
                     <UserPlus className="w-6 h-6" />
                     <span>Manage Tutors</span>
                   </Link>
                 </Button>
                 <Button variant="outline" className="h-20 flex-col space-y-2" asChild>
-                  <Link href={`/dashboard/subjects/${subject.id}/edit`}>
+                  <Link href={`/dashboard/subjects/${id}/edit`}>
                     <Edit className="w-6 h-6" />
                     <span>Edit Subject</span>
                   </Link>

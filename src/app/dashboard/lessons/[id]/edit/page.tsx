@@ -4,7 +4,9 @@ import {
   fetchLessonById, 
   updateLesson, 
   getAvailableTutors, 
-  getEnrolledStudents 
+  getEnrolledStudents,
+  UpdateLessonData,
+  CreateLessonData
 } from '@/lib/lesson-actions'
 import { LessonForm } from '@/components/lessons/LessonForm'
 
@@ -29,9 +31,9 @@ function decodeJWT(token: string) {
 }
 
 interface EditLessonPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function EditLessonPage({ params }: EditLessonPageProps) {
@@ -60,7 +62,8 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
   }
 
   try {
-    const lesson = await fetchLessonById(params.id)
+    const { id } = await params
+    const lesson = await fetchLessonById(id)
     
     if (!lesson) {
       notFound()
@@ -92,9 +95,16 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
       
       // Extract subjects from the tutor_subjects relation and ensure proper typing
       const subjects = tutorSubjects
-        ?.map((ts: { subject: { id: string; code: string; title: string } }) => ts.subject)
-        .filter((subject: { id: string; code: string; title: string } | null) => subject && subject.id && subject.code && subject.title)
-        .sort((a: { code: string }, b: { code: string }) => a.code.localeCompare(b.code)) || []
+        ?.map((ts: unknown) => (ts as { subject: { id: string; code: string; title: string } }).subject)
+        .filter((subject: unknown) => {
+          const s = subject as { id: string; code: string; title: string } | null;
+          return s && s.id && s.code && s.title;
+        })
+        .sort((a: unknown, b: unknown) => {
+          const subjectA = a as { code: string };
+          const subjectB = b as { code: string };
+          return subjectA.code.localeCompare(subjectB.code);
+        }) || []
       
       subjectsResult = { data: subjects, error: null }
     } else {
@@ -148,10 +158,10 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
       getEnrolledStudents(), // Get all students initially, will be filtered by subject in form
     ])
 
-    const handleSubmit = async (data: Record<string, unknown>) => {
+    const handleSubmit = async (data: CreateLessonData | UpdateLessonData) => {
       'use server'
       try {
-        await updateLesson(data)
+        await updateLesson(data as UpdateLessonData)
       } catch (error) {
         console.error('Error updating lesson:', error)
         throw error

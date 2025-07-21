@@ -26,12 +26,12 @@ function decodeJWT(token: string) {
 }
 
 interface TutorsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     page?: string
-  }
+  }>
 }
 
 function TutorListSkeleton() {
@@ -74,10 +74,11 @@ function TutorListSkeleton() {
 }
 
 async function TutorsContent({ searchParams, userRole }: TutorsPageProps & { userRole: string }) {
-  const search = searchParams.search
-  const sortBy = searchParams.sortBy || 'first_name'
-  const sortOrder = searchParams.sortOrder || 'asc'
-  const page = parseInt(searchParams.page || '1')
+  const params = await searchParams;
+  const search = params.search
+  const sortBy = params.sortBy || 'first_name'
+  const sortOrder = params.sortOrder || 'asc'
+  const page = parseInt(params.page || '1')
 
   try {
     const result = await getTutors(search, sortBy, sortOrder, page)

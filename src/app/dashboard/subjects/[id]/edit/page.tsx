@@ -24,9 +24,9 @@ function decodeJWT(token: string) {
 }
 
 interface EditSubjectPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function EditSubjectPage({ params }: EditSubjectPageProps) {
@@ -54,7 +54,8 @@ export default async function EditSubjectPage({ params }: EditSubjectPageProps) 
     redirect('/dashboard/subjects')
   }
 
-  const subject = await fetchSubjectById(params.id);
+  const { id } = await params;
+  const subject = await fetchSubjectById(id);
 
   if (!subject) {
     notFound();

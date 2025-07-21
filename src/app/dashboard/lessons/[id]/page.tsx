@@ -24,9 +24,9 @@ function decodeJWT(token: string) {
 }
 
 interface LessonDetailPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function LessonDetailPage({ params }: LessonDetailPageProps) {
@@ -50,7 +50,8 @@ export default async function LessonDetailPage({ params }: LessonDetailPageProps
   }
 
   try {
-    const lesson = await fetchLessonById(params.id)
+    const { id } = await params
+    const lesson = await fetchLessonById(id)
     
     if (!lesson) {
       notFound()

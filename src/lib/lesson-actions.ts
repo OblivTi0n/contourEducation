@@ -152,7 +152,7 @@ export async function fetchLessons(
       `)
       .in('lesson_id', lessonIds)
 
-    tutorsData = tutors || []
+    tutorsData = tutors as any || []
 
     // Fetch students for these lessons  
     const { data: students } = await supabase
@@ -163,7 +163,7 @@ export async function fetchLessons(
       `)
       .in('lesson_id', lessonIds)
 
-    studentsData = students || []
+    studentsData = students as any || []
   } catch (junctionError) {
     console.warn('Error fetching junction data:', junctionError)
     // Continue without junction data if there are RLS issues
@@ -175,28 +175,28 @@ export async function fetchLessons(
   if (user_role === 'student' && user_id) {
     // Filter to only lessons where user is a student
     const studentLessonIds = studentsData
-      .filter(s => s.student?.id === user_id)
+      .filter(s => (s as any).student?.id === user_id)
       .map(s => s.lesson_id)
     filteredLessons = lessonsData.filter(lesson => studentLessonIds.includes(lesson.id))
   } else if (user_role === 'tutor' && user_id) {
     // Filter to only lessons where user is a tutor
     const tutorLessonIds = tutorsData
-      .filter(t => t.tutor?.id === user_id)
+      .filter(t => (t as any).tutor?.id === user_id)
       .map(t => t.lesson_id)
     filteredLessons = lessonsData.filter(lesson => tutorLessonIds.includes(lesson.id))
   }
   // Admins see all lessons (no filtering)
 
   // Transform the data to include tutors and students
-  const lessons: Lesson[] = filteredLessons.map((lesson: Record<string, unknown>) => ({
+  const lessons = filteredLessons.map((lesson: Record<string, unknown>) => ({
     ...lesson,
     tutors: tutorsData
       .filter(t => t.lesson_id === lesson.id)
-      .map(t => t.tutor)
+      .map(t => (t as any).tutor)
       .filter(tutor => tutor), // Remove nulls
     students: studentsData
       .filter(s => s.lesson_id === lesson.id)
-      .map(s => s.student)
+      .map(s => (s as any).student)
       .filter(student => student) // Remove nulls
   }))
 
@@ -206,7 +206,7 @@ export async function fetchLessons(
     .select('*', { count: 'exact', head: true })
   
   return {
-    data: lessons,
+    data: lessons as Lesson[],
     count: count || 0,
     totalPages: Math.ceil((count || 0) / limit),
     page,
@@ -249,7 +249,7 @@ export async function fetchLessonById(id: string): Promise<Lesson | null> {
       `)
       .eq('lesson_id', id)
 
-    tutors = tutorsData?.map(t => t.tutor).filter(tutor => tutor) || []
+    tutors = tutorsData?.map(t => (t as any).tutor).filter(tutor => tutor) || []
 
     // Fetch students for this lesson
     const { data: studentsData } = await supabase
@@ -259,7 +259,7 @@ export async function fetchLessonById(id: string): Promise<Lesson | null> {
       `)
       .eq('lesson_id', id)
 
-    students = studentsData?.map(s => s.student).filter(student => student) || []
+    students = studentsData?.map(s => (s as any).student).filter(student => student) || []
   } catch (junctionError) {
     console.warn('Error fetching junction data for lesson:', junctionError)
     // Continue without junction data if there are RLS issues

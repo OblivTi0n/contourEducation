@@ -30,14 +30,14 @@ function decodeJWT(token: string) {
 }
 
 interface UsersPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string
     tab?: 'students' | 'tutors'
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
     page?: string
     subject?: string
-  }
+  }>
 }
 
 function UserListSkeleton() {
@@ -91,14 +91,15 @@ function UserListSkeleton() {
 }
 
 async function StudentsContent({ searchParams, userRole }: UsersPageProps & { userRole: string }) {
-  const search = searchParams.search
-  const sortBy = searchParams.sortBy || 'first_name'
-  const sortOrder = searchParams.sortOrder || 'asc'
-  const page = parseInt(searchParams.page || '1')
-  const subjectFilter = searchParams.subject
+  const params = await searchParams;
+  const search = params.search
+  const sortBy = params.sortBy || 'first_name'
+  const sortOrder = params.sortOrder || 'asc'
+  const page = parseInt(params.page || '1')
+  const subjectFilter = params.subject
 
   try {
-    const result = await getStudents(search, sortBy, sortOrder, page, subjectFilter)
+    const result = await getStudents(search, sortBy, sortOrder, page, subjectFilter ? parseInt(subjectFilter) : undefined)
 
     return (
       <StudentList
@@ -131,14 +132,15 @@ async function StudentsContent({ searchParams, userRole }: UsersPageProps & { us
 }
 
 async function TutorsContent({ searchParams, userRole }: UsersPageProps & { userRole: string }) {
-  const search = searchParams.search
-  const sortBy = searchParams.sortBy || 'first_name'
-  const sortOrder = searchParams.sortOrder || 'asc'
-  const page = parseInt(searchParams.page || '1')
-  const subjectFilter = searchParams.subject
+  const params = await searchParams;
+  const search = params.search
+  const sortBy = params.sortBy || 'first_name'
+  const sortOrder = params.sortOrder || 'asc'
+  const page = parseInt(params.page || '1')
+  const subjectFilter = params.subject
 
   try {
-    const result = await getTutors(search, sortBy, sortOrder, page, subjectFilter)
+    const result = await getTutors(search, sortBy, sortOrder, page, subjectFilter ? parseInt(subjectFilter) : undefined)
 
     return (
       <TutorList
@@ -195,7 +197,8 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     redirect('/dashboard')
   }
 
-  const activeTab = searchParams.tab || 'students'
+  const params = await searchParams;
+  const activeTab = params.tab || 'students'
 
   return (
     <div className="space-y-6">
