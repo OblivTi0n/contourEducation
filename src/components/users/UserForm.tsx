@@ -48,6 +48,8 @@ import {
 interface UserFormProps {
   user?: UserProfile;
   mode: 'create' | 'edit';
+  currentUserRole?: string;
+  currentUserId?: string;
 }
 
 interface FormData {
@@ -94,7 +96,7 @@ const initialFormData: FormData = {
   emergency_contact_phone: '',
 };
 
-export function UserForm({ user, mode }: UserFormProps) {
+export function UserForm({ user, mode, currentUserRole, currentUserId }: UserFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -305,11 +307,13 @@ export function UserForm({ user, mode }: UserFormProps) {
           };
           await updateUser(user.id, updateData);
           
-          // Handle subject assignments for updated user
-          if (formData.role === 'tutor') {
-            await assignTutorToSubjects(user.id, tutorSubjects);
-          } else if (formData.role === 'student') {
-            await enrollStudentInSubjects(user.id, studentEnrolments);
+          // Handle subject assignments for updated user (only if user can edit assignments)
+          if (canEditSubjectAssignments()) {
+            if (formData.role === 'tutor') {
+              await assignTutorToSubjects(user.id, tutorSubjects);
+            } else if (formData.role === 'student') {
+              await enrollStudentInSubjects(user.id, studentEnrolments);
+            }
           }
         }
         
@@ -404,6 +408,22 @@ export function UserForm({ user, mode }: UserFormProps) {
   const getStudentEnrolmentStatus = (subjectId: string) => {
     const enrolment = studentEnrolments.find(e => e.subject_id === subjectId);
     return enrolment?.status || 'active';
+  };
+
+  // Check if current user can edit subject assignments
+  const canEditSubjectAssignments = () => {
+    // Admins can always edit subject assignments
+    if (currentUserRole === 'admin') {
+      return true;
+    }
+    
+    // Tutors cannot edit their own subject assignments
+    if (currentUserRole === 'tutor' && mode === 'edit' && user && currentUserId === user.id) {
+      return false;
+    }
+    
+    // For create mode or other scenarios, allow if user is admin (already handled above)
+    return currentUserRole === 'admin';
   };
 
   return (
@@ -669,71 +689,108 @@ export function UserForm({ user, mode }: UserFormProps) {
                 <span>Subject Assignments</span>
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Select the subjects this tutor is qualified to teach
+                {canEditSubjectAssignments() 
+                  ? "Select the subjects this tutor is qualified to teach"
+                  : "Subjects assigned to this tutor (contact an admin to make changes)"
+                }
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isLoadingSubjects ? (
-                <p className="text-sm text-muted-foreground">Loading subjects...</p>
-              ) : availableSubjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No subjects available</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {availableSubjects.map((subject) => (
-                    <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                      <Checkbox
-                        id={`tutor-subject-${subject.id}`}
-                        checked={isSubjectAssignedToTutor(subject.id)}
-                        onCheckedChange={() => handleTutorSubjectToggle(subject.id)}
-                      />
-                      <div className="flex-1">
-                        <label
-                          htmlFor={`tutor-subject-${subject.id}`}
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          {subject.code} - {subject.title}
-                        </label>
-                        {isSubjectAssignedToTutor(subject.id) && (
-                          <div className="flex items-center space-x-2 mt-2">
-                            <Checkbox
-                              id={`lead-tutor-${subject.id}`}
-                              checked={isTutorLeadForSubject(subject.id)}
-                              onCheckedChange={() => handleTutorLeadToggle(subject.id)}
-                            />
-                            <label
-                              htmlFor={`lead-tutor-${subject.id}`}
-                              className="text-xs text-muted-foreground cursor-pointer flex items-center"
-                            >
-                              <Crown className="w-3 h-3 mr-1" />
-                              Lead tutor for this subject
-                            </label>
+              {!canEditSubjectAssignments() ? (
+                // Read-only view for tutors viewing their own profile
+                <div className="space-y-4">
+                  {tutorSubjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects currently assigned</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {tutorSubjects.map((assignment) => {
+                        const subject = availableSubjects.find(s => s.id === assignment.subject_id);
+                        if (!subject) return null;
+                        return (
+                          <div key={assignment.subject_id} className="flex items-center space-x-3 p-3 border rounded-lg bg-muted/50">
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">
+                                {subject.code} - {subject.title}
+                              </div>
+                              {assignment.is_lead_tutor && (
+                                <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                  <Crown className="w-3 h-3 mr-1" />
+                                  Lead tutor for this subject
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Editable view for admins
+                <>
+                  {isLoadingSubjects ? (
+                    <p className="text-sm text-muted-foreground">Loading subjects...</p>
+                  ) : availableSubjects.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects available</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {availableSubjects.map((subject) => (
+                        <div key={subject.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <Checkbox
+                            id={`tutor-subject-${subject.id}`}
+                            checked={isSubjectAssignedToTutor(subject.id)}
+                            onCheckedChange={() => handleTutorSubjectToggle(subject.id)}
+                          />
+                          <div className="flex-1">
+                            <label
+                              htmlFor={`tutor-subject-${subject.id}`}
+                              className="text-sm font-medium cursor-pointer"
+                            >
+                              {subject.code} - {subject.title}
+                            </label>
+                            {isSubjectAssignedToTutor(subject.id) && (
+                              <div className="flex items-center space-x-2 mt-2">
+                                <Checkbox
+                                  id={`lead-tutor-${subject.id}`}
+                                  checked={isTutorLeadForSubject(subject.id)}
+                                  onCheckedChange={() => handleTutorLeadToggle(subject.id)}
+                                />
+                                <label
+                                  htmlFor={`lead-tutor-${subject.id}`}
+                                  className="text-xs text-muted-foreground cursor-pointer flex items-center"
+                                >
+                                  <Crown className="w-3 h-3 mr-1" />
+                                  Lead tutor for this subject
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {tutorSubjects.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium mb-2">
+                        Selected Subjects ({tutorSubjects.length}):
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {tutorSubjects.map((assignment) => {
+                          const subject = availableSubjects.find(s => s.id === assignment.subject_id);
+                          if (!subject) return null;
+                          return (
+                            <Badge key={assignment.subject_id} variant="secondary">
+                              {subject.code}
+                              {assignment.is_lead_tutor && (
+                                <Crown className="w-3 h-3 ml-1" />
+                              )}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-              {tutorSubjects.length > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-2">
-                    Selected Subjects ({tutorSubjects.length}):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {tutorSubjects.map((assignment) => {
-                      const subject = availableSubjects.find(s => s.id === assignment.subject_id);
-                      if (!subject) return null;
-                      return (
-                        <Badge key={assignment.subject_id} variant="secondary">
-                          {subject.code}
-                          {assignment.is_lead_tutor && (
-                            <Crown className="w-3 h-3 ml-1" />
-                          )}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

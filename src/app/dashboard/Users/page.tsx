@@ -6,6 +6,28 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { GraduationCap, Users } from 'lucide-react'
+import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
+
+// Helper function to decode JWT and extract claims
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding JWT:', error)
+    return null
+  }
+}
 
 interface UsersPageProps {
   searchParams: {
@@ -68,7 +90,7 @@ function UserListSkeleton() {
   )
 }
 
-async function StudentsContent({ searchParams }: UsersPageProps) {
+async function StudentsContent({ searchParams, userRole }: UsersPageProps & { userRole: string }) {
   const search = searchParams.search
   const sortBy = searchParams.sortBy || 'first_name'
   const sortOrder = searchParams.sortOrder || 'asc'
@@ -88,7 +110,7 @@ async function StudentsContent({ searchParams }: UsersPageProps) {
         sortBy={sortBy}
         sortOrder={sortOrder}
         subjectFilter={subjectFilter}
-        userRole="admin"
+        userRole={userRole as 'admin' | 'tutor'}
       />
     )
   } catch (error) {
@@ -108,7 +130,7 @@ async function StudentsContent({ searchParams }: UsersPageProps) {
   }
 }
 
-async function TutorsContent({ searchParams }: UsersPageProps) {
+async function TutorsContent({ searchParams, userRole }: UsersPageProps & { userRole: string }) {
   const search = searchParams.search
   const sortBy = searchParams.sortBy || 'first_name'
   const sortOrder = searchParams.sortOrder || 'asc'
@@ -128,6 +150,7 @@ async function TutorsContent({ searchParams }: UsersPageProps) {
         sortBy={sortBy}
         sortOrder={sortOrder}
         subjectFilter={subjectFilter}
+        userRole={userRole as 'admin' | 'tutor'}
       />
     )
   } catch (error) {
@@ -147,7 +170,31 @@ async function TutorsContent({ searchParams }: UsersPageProps) {
   }
 }
 
-export default function UsersPage({ searchParams }: UsersPageProps) {
+export default async function UsersPage({ searchParams }: UsersPageProps) {
+  const supabase = await createClient()
+  
+  // Check authentication and permissions
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    redirect('/login')
+  }
+
+  let userRole: string = 'student' // Default fallback
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token)
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role
+    }
+  }
+
+  // Only allow admins and tutors to access user management
+  if (userRole === 'student') {
+    redirect('/dashboard')
+  }
+
   const activeTab = searchParams.tab || 'students'
 
   return (
@@ -173,13 +220,13 @@ export default function UsersPage({ searchParams }: UsersPageProps) {
 
         <TabsContent value="students">
           <Suspense fallback={<UserListSkeleton />}>
-            <StudentsContent searchParams={searchParams} />
+            <StudentsContent searchParams={searchParams} userRole={userRole} />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="tutors">
           <Suspense fallback={<UserListSkeleton />}>
-            <TutorsContent searchParams={searchParams} />
+            <TutorsContent searchParams={searchParams} userRole={userRole} />
           </Suspense>
         </TabsContent>
       </Tabs>

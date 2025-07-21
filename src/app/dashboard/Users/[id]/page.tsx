@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getUserById } from '@/lib/user-actions'
+import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
 import {
   User,
   Mail,
@@ -20,6 +22,26 @@ import {
   BookOpen,
   Crown,
 } from 'lucide-react'
+
+// Helper function to decode JWT and extract claims
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding JWT:', error)
+    return null
+  }
+}
 
 interface UserDetailPageProps {
   params: {
@@ -56,6 +78,34 @@ function InfoItem({
 }
 
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
+  const supabase = await createClient()
+  
+  // Check authentication and permissions
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    redirect('/login')
+  }
+
+  let userRole: string = 'student' // Default fallback
+  let currentUserId = session.user.id
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token)
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role
+    }
+  }
+
+  // Authorization check: 
+  // - Admins can view all users
+  // - Tutors can view all users but only edit their own profile
+  // - Students can only view their own profile
+  if (userRole === 'student' && currentUserId !== params.id) {
+    redirect('/dashboard')
+  }
+
   try {
     const user = await getUserById(params.id)
     
@@ -74,12 +124,21 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/users">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Users
-                </Link>
-              </Button>
+              {userRole === 'admin' ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/dashboard/users">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Users
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/dashboard">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Dashboard
+                  </Link>
+                </Button>
+              )}
               <div className="flex items-center space-x-3">
                 <Avatar className="w-12 h-12">
                   <AvatarImage src={user.avatar_url || undefined} />
@@ -93,12 +152,15 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                 </div>
               </div>
             </div>
-            <Button asChild>
-              <Link href={`/dashboard/users/${user.id}/edit`}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edit User
-              </Link>
-            </Button>
+            {/* Only show edit button if user is admin or viewing their own profile */}
+            {(userRole === 'admin' || currentUserId === params.id) && (
+              <Button asChild>
+                <Link href={`/dashboard/users/${user.id}/edit`}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  {currentUserId === params.id ? 'Edit Profile' : 'Edit User'}
+                </Link>
+              </Button>
+            )}
           </div>
 
           {/* Basic Information */}
@@ -296,16 +358,19 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
             </CardHeader>
             <CardContent>
               <div className="flex space-x-4">
-                <Button asChild>
-                  <Link href={`/dashboard/users/${user.id}/edit`}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit User
-                  </Link>
-                </Button>
+                {/* Only show edit button if user is admin or viewing their own profile */}
+                {(userRole === 'admin' || currentUserId === params.id) && (
+                  <Button asChild>
+                    <Link href={`/dashboard/users/${user.id}/edit`}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      {currentUserId === params.id ? 'Edit Profile' : 'Edit User'}
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="outline" asChild>
-                  <Link href="/dashboard/users">
+                  <Link href={userRole === 'admin' ? '/dashboard/users' : '/dashboard'}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Users
+                    {userRole === 'admin' ? 'Back to Users' : 'Back to Dashboard'}
                   </Link>
                 </Button>
               </div>

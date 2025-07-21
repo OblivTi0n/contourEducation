@@ -66,6 +66,7 @@ interface TutorListProps {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   subjectFilter?: string;
+  userRole?: 'admin' | 'tutor'; // Who is viewing this list
 }
 
 const sortableColumns = [
@@ -82,7 +83,8 @@ export function TutorList({
   searchQuery = '',
   sortBy = 'first_name',
   sortOrder = 'asc',
-  subjectFilter
+  subjectFilter,
+  userRole = 'admin'
 }: TutorListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -324,19 +326,23 @@ export function TutorList({
                             <Eye className="w-4 h-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/dashboard/users/${tutor.id}/edit`)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteTutor(tutor)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {userRole === 'admin' && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/dashboard/users/${tutor.id}/edit`)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteTutor(tutor)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

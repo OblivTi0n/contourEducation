@@ -14,7 +14,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  User
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -52,7 +53,7 @@ export const Navigation = () => {
       if (userRole === "tutor") {
         return [
           ...baseItems,
-          { label: "Students", href: "/dashboard/students", icon: Users },
+          { label: "Students", href: "/dashboard/users", icon: Users },
         ];
       }
 
@@ -135,7 +136,16 @@ export const Navigation = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                  className="bg-white hover:bg-gray-100 text-blue-600"
+                  onClick={() => router.push(`/dashboard/users/${profile?.id}`)}
+                  disabled={loading || !profile?.id}
+                >
+                  <User className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="bg-white hover:bg-gray-100 text-blue-600"
                   onClick={handleSignOut}
                   disabled={loading}
                 >
@@ -186,7 +196,20 @@ export const Navigation = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="w-full justify-start text-primary-foreground hover:bg-primary-foreground/10"
+                className="w-full justify-start bg-white hover:bg-gray-100 text-blue-600"
+                onClick={() => {
+                  router.push(`/dashboard/users/${profile?.id}`);
+                  setIsMobileMenuOpen(false);
+                }}
+                disabled={loading || !profile?.id}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Profile
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-start bg-white hover:bg-gray-100 text-blue-600"
                 onClick={handleSignOut}
                 disabled={loading}
               >

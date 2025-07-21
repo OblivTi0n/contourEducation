@@ -2,6 +2,28 @@ import { Suspense } from 'react'
 import { TutorList } from '@/components/users/TutorList'
 import { getTutors } from '@/lib/user-actions'
 import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
+
+// Helper function to decode JWT and extract claims
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding JWT:', error)
+    return null
+  }
+}
 
 interface TutorsPageProps {
   searchParams: {
@@ -51,7 +73,7 @@ function TutorListSkeleton() {
   )
 }
 
-async function TutorsContent({ searchParams }: TutorsPageProps) {
+async function TutorsContent({ searchParams, userRole }: TutorsPageProps & { userRole: string }) {
   const search = searchParams.search
   const sortBy = searchParams.sortBy || 'first_name'
   const sortOrder = searchParams.sortOrder || 'asc'
@@ -69,6 +91,7 @@ async function TutorsContent({ searchParams }: TutorsPageProps) {
         searchQuery={search}
         sortBy={sortBy}
         sortOrder={sortOrder}
+        userRole={userRole as 'admin' | 'tutor'}
       />
     )
   } catch (error) {
@@ -88,10 +111,34 @@ async function TutorsContent({ searchParams }: TutorsPageProps) {
   }
 }
 
-export default function TutorsPage({ searchParams }: TutorsPageProps) {
+export default async function TutorsPage({ searchParams }: TutorsPageProps) {
+  const supabase = await createClient()
+  
+  // Check authentication and permissions
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    redirect('/login')
+  }
+
+  let userRole: string = 'student' // Default fallback
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token)
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role
+    }
+  }
+
+  // Only allow admins and tutors to access tutor management
+  if (userRole === 'student') {
+    redirect('/dashboard')
+  }
+
   return (
     <Suspense fallback={<TutorListSkeleton />}>
-      <TutorsContent searchParams={searchParams} />
+      <TutorsContent searchParams={searchParams} userRole={userRole} />
     </Suspense>
   )
 } 

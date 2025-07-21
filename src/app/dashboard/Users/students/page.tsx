@@ -2,6 +2,28 @@ import { Suspense } from 'react'
 import { StudentList } from '@/components/users/StudentList'
 import { getStudents } from '@/lib/user-actions'
 import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
+
+// Helper function to decode JWT and extract claims
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        })
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch (error) {
+    console.error('Error decoding JWT:', error)
+    return null
+  }
+}
 
 interface StudentsPageProps {
   searchParams: {
@@ -89,7 +111,31 @@ async function StudentsContent({ searchParams }: StudentsPageProps) {
   }
 }
 
-export default function StudentsPage({ searchParams }: StudentsPageProps) {
+export default async function StudentsPage({ searchParams }: StudentsPageProps) {
+  const supabase = await createClient()
+  
+  // Check authentication and permissions
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    redirect('/login')
+  }
+
+  let userRole: string = 'student' // Default fallback
+
+  // Decode JWT to extract user role
+  if (session.access_token) {
+    const decodedToken = decodeJWT(session.access_token)
+    if (decodedToken && decodedToken.user_role) {
+      userRole = decodedToken.user_role
+    }
+  }
+
+  // Only allow admins and tutors to access student management
+  if (userRole === 'student') {
+    redirect('/dashboard')
+  }
+
   return (
     <Suspense fallback={<StudentListSkeleton />}>
       <StudentsContent searchParams={searchParams} />
