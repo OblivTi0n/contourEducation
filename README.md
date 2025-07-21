@@ -1,5 +1,7 @@
 # Contour Education - Learning Management System
 
+To directly try out the LMS, open this link: [https://contour-education.vercel.app/login](https://contour-education.vercel.app/login)
+
 This is a Learning Management System (LMS) for Contour Education.
 
 ## Notes
