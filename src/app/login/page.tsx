@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,19 @@ export default function Login() {
   const [showTestCreds, setShowTestCreds] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
+
+  // Check if user is already logged in and redirect to dashboard
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        router.push('/dashboard')
+      }
+    }
+    
+    checkAuth()
+  }, [supabase, router])
 
   // Test credentials for easy testing
   const testAccounts = [
