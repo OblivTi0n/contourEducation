@@ -1,6 +1,90 @@
-# Supabase Auth App
+# Contour Education - Learning Management System
 
-A Next.js application with Supabase authentication featuring login/signup functionality and a protected dashboard that displays JWT tokens.
+This is a Learning Management System (LMS) for Contour Education.
+
+## Notes
+
+The task was to create a simple lms dashboard system where students can view their lessons. So I decided to implement a three role student, tutor, admin lms system. This may be more complicated than the required task but I think implementing a system where students can just view lessons would be bad system design and scalability if there was just one stakeholder, students.
+
+So I decided to implement a system with Students, Tutors, and Admins, with the following database structure:
+
+i have setup auth hook to manipulate jwt token so the user role (student, tutor ,admin) is in the generated jwt token
+
+### Custom JWT Claims with Auth Hooks
+
+To include the user's role directly within the JWT for easy access on the client-side, this project uses a Supabase Auth Hook. This is achieved with a custom PostgreSQL function that is triggered every time a new access token is generated.
+
+The function retrieves the user's role from the `profiles` table and injects it into the JWT's claims under `user_role`.
+
+Here is the SQL for the hook:
+
+```sql
+-- Custom Access Token Hook to add user role from profiles table
+create or replace function public.custom_access_token_hook(event jsonb)
+returns jsonb
+language plpgsql
+security definer
+as $$
+  declare
+    claims jsonb;
+    user_role text;
+  begin
+    -- Extract the existing claims
+    claims := event->'claims';
+    
+    -- Get the user's role from the profiles table
+    select role into user_role
+    from public.profiles
+    where id = (event->>'user_id')::uuid;
+    
+    -- If we found a role, add it to the claims
+    if user_role is not null then
+      claims := jsonb_set(claims, '{user_role}', to_jsonb(user_role));
+    end if;
+    
+    -- Return the updated claims
+    return jsonb_build_object('claims', claims);
+  end;
+$$;
+
+-- Grant necessary permissions
+grant execute on function public.custom_access_token_hook to supabase_auth_admin;
+grant execute on function public.custom_access_token_hook to postgres;
+grant execute on function public.custom_access_token_hook to anon;
+grant execute on function public.custom_access_token_hook to authenticated;
+grant execute on function public.custom_access_token_hook to service_role;
+```
+
+This function is then configured in the Supabase Dashboard under `Authentication` > `Auth Hooks`, as shown below:
+
+![Supabase Auth Hook Setup](image.png)
+
+### Core Data Tables
+These tables store the fundamental entities of your application.
+
+| Table Name      | Explanation                                                                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`      | Stores all user information. It is linked one-to-one with Supabase's `auth.users` table and holds application-specific data like first name, last name, role (student, tutor, admin), and contact details. |
+| `subjects`      | The master list of all VCE subjects the company offers (e.g., "VCE Mathematical Methods 3&4", "VCE English 1&2"). This is the core of your curriculum.                                                  |
+| `campuses`      | Stores the physical locations of the tutoring centers (e.g., Glen Waverley, Box Hill). Includes details like address and Google Maps links.                                                            |
+| `rooms`         | Lists the individual, bookable rooms available within each campus (e.g., "Room 1", "Auditorium"). Each room is linked to a specific campus.                                                            |
+| `lessons`       | The central scheduling table. Each row is a single tutoring session, linking a subject, a time, and a specific location (either a physical room or an online URL).                                      |
+| `resources`     | The file library. This table stores metadata for uploaded documents like worksheets, slides, and past exams, linking each file to either a subject or a specific lesson.                                |
+
+### "Bridge" Tables (Many-to-Many Relationships)
+These tables connect the core tables, creating the many-to-many relationships that make the system work.
+
+| Table Name        | Explanation                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `enrolments`      | Connects students to subjects. This table answers the question: "Which students are learning which subjects?"         |
+| `tutor_subjects`  | Connects tutors to subjects. This table answers the question: "Which tutors are qualified to teach which subjects?"   |
+| `lesson_students` | Connects students to specific lessons. This table answers the question: "Which students are attending this particular lesson session?" |
+| `lesson_tutors`   | Connects tutors to specific lessons. This table answers the question: "Which tutors are teaching this particular lesson session?"     |
+
+### Role Permissions
+*   **Admin:** Able to CRUD (Create, Read, Update, Delete) everything.
+*   **Tutor:** Able to create lessons, change information about themselves, and manage lessons.
+*   **Student:** Only able to view their lessons and information about their lessons and subjects in a nice dashboard.
 
 ## Features
 
@@ -14,11 +98,12 @@ A Next.js application with Supabase authentication featuring login/signup functi
 
 ### 1. Environment Variables
 
-Create a `.env.local` file in the root directory with your Supabase credentials:
+Create a `.env.local` file in the root directory with your Supabase credentials you can use my credentials:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_URL=https://czfpfpcmcawaxiwerahv.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZnBmcGNtY2F3YXhpd2VyYWh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MDU3MjUsImV4cCI6MjA2ODQ4MTcyNX0.hPBUtwEqLXEMpNusmvozp8gGaiGqchJ1BXi8bMriBtc
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZnBmcGNtY2F3YXhpd2VyYWh2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjkwNTcyNSwiZXhwIjoyMDY4NDgxNzI1fQ.cFbbh545ixNBq3jFHka6kGZBNZwUoI9ylEIspINGXUo
 ```
 
 To get these values:
@@ -43,20 +128,23 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
-```
-src/
-├── app/
-│   ├── dashboard/
-│   │   └── page.tsx          # Unified dashboard (role-based component rendering)
-│   ├── login/
-│   │   └── page.tsx          # Login/signup page
-│   ├── layout.tsx            # Root layout
-│   └── page.tsx              # Homepage with navigation
-├── lib/
-│   ├── supabase.ts           # Client-side Supabase client
-│   └── supabase-server.ts    # Server-side Supabase client
-└── middleware.ts             # Authentication middleware
-```
+To keep the project structure clean and maintainable, this application follows a pattern similar to Model-View-Controller (MVC). Here’s how the directories are organized:
+
+*   **`src/app` (Controller/Routing):** This directory uses Next.js's App Router to handle routing and data fetching. Each route segment is a "controller" that fetches data and passes it to the corresponding "view" components.
+
+*   **`src/components` (View):** This directory contains all the React components that make up the user interface. The components are organized by feature, with each feature having its own subfolder. This makes it easy to find and manage the UI for different parts of the application.
+    *   `campuses/`: Components related to managing campuses.
+    *   `dashboard/`: Components for the main dashboard views (Admin, Tutor, Student).
+    *   `lessons/`: Components for displaying and managing lessons.
+    *   `subjects/`: Components for handling subjects and tutor assignments.
+    *   `users/`: Components for user management forms and lists.
+    *   `ui/`: Generic, reusable UI components like buttons, inputs, and cards.
+
+*   **`src/lib` (Model/Business Logic):** This directory contains the application's business logic, including server-side actions for interacting with the Supabase database and the Supabase client configurations.
+    *   `*-actions.ts`: These files contain server-side functions for creating, reading, updating, and deleting data for different features (e.g., `campus-actions.ts`, `lesson-actions.ts`).
+    *   `supabase.ts` & `supabase-server.ts`: These files configure the client-side and server-side Supabase clients.
+
+This separation of concerns makes the codebase easier to navigate, scale, and debug.
 
 ## Pages
 
