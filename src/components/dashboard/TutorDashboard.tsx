@@ -8,7 +8,7 @@ import { Calendar, Users, BookOpen, Plus, Eye } from "lucide-react";
 import Link from "next/link";
 import { createClient } from '@/lib/supabase-server';
 import { fetchLessons } from '@/lib/lesson-actions';
-import { getUsers } from '@/lib/user-actions';
+import { getUsers, getUserById } from '@/lib/user-actions';
 import { redirect } from 'next/navigation';
 
 // Helper function to decode JWT
@@ -57,7 +57,11 @@ export const TutorDashboard = async () => {
     redirect('/dashboard');
   }
 
+  let tutorProfile;
+  
   try {
+    // Fetch tutor profile data
+    tutorProfile = await getUserById(user.id);
     // Fetch tutor's lessons
     const lessonsResult = await fetchLessons(
       1, // page
@@ -182,7 +186,7 @@ export const TutorDashboard = async () => {
       <div className="space-y-8">
         {/* Welcome Section */}
         <div className="text-center space-y-4 animate-fade-in">
-          <h1 className="text-4xl font-bold text-foreground">Welcome back, Tutor!</h1>
+          <h1 className="text-4xl font-bold text-foreground">Welcome back, {tutorProfile.first_name || 'Tutor'}!</h1>
           <p className="text-xl text-muted-foreground">Ready to inspire your students today?</p>
         </div>
 
@@ -304,7 +308,7 @@ export const TutorDashboard = async () => {
     return (
       <div className="space-y-8">
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Welcome back, Tutor!</h1>
+          <h1 className="text-4xl font-bold text-foreground">Welcome back, {tutorProfile?.first_name || 'Tutor'}!</h1>
           <p className="text-xl text-destructive">Unable to load dashboard data. Please try again.</p>
         </div>
       </div>

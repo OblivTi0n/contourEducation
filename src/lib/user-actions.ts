@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createAdminClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -253,14 +253,17 @@ export async function getUserById(id: string) {
 
 export async function createUser(userData: CreateUserData) {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  // First create the auth user
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // Create the auth user using admin client (no email confirmation required)
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: userData.email,
     password: userData.password,
     email_confirm: true,
     user_metadata: {
-      role: userData.role
+      role: userData.role,
+      first_name: userData.first_name,
+      last_name: userData.last_name
     }
   })
 
@@ -302,7 +305,7 @@ export async function createUser(userData: CreateUserData) {
   if (profileError) {
     console.error('Error creating profile:', profileError)
     // Clean up the auth user if profile creation fails
-    await supabase.auth.admin.deleteUser(authData.user.id)
+    await adminClient.auth.admin.deleteUser(authData.user.id)
     throw new Error('Failed to create user profile')
   }
 
@@ -332,6 +335,7 @@ export async function updateUser(id: string, userData: UpdateUserData) {
 
 export async function deleteUser(id: string) {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // Delete the profile first
   const { error: profileError } = await supabase
@@ -344,13 +348,12 @@ export async function deleteUser(id: string) {
     throw new Error('Failed to delete user profile')
   }
 
-  // Then delete the auth user
-  const { error: authError } = await supabase.auth.admin.deleteUser(id)
+  // Delete the auth user using admin client
+  const { error: authError } = await adminClient.auth.admin.deleteUser(id)
 
   if (authError) {
     console.error('Error deleting auth user:', authError)
-    // Profile is already deleted, but log the auth deletion failure
-    console.warn('Auth user deletion failed, but profile was deleted')
+    throw new Error('Failed to delete user account')
   }
 
   revalidatePath('/dashboard/users')
