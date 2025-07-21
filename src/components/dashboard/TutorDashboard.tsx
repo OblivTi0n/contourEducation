@@ -107,9 +107,9 @@ export const TutorDashboard = async () => {
     const subjects = tutorSubjects?.map(ts => ts.subject).filter(subject => subject != null) || [];
 
     // Get students from tutor's subjects via enrollments
-    let allStudents: any[] = [];
+    let allStudents: Array<{ id: string; first_name: string; last_name: string; role: string; subjects: string[] }> = [];
     if (subjects.length > 0) {
-      const subjectIdsFromAssignments = subjects.map((s: any) => s?.id).filter(Boolean);
+      const subjectIdsFromAssignments = subjects.map((s: unknown) => (s as { id: string } | null)?.id).filter(Boolean);
       
       const { data: enrollments } = await supabase
         .from('enrolments')
@@ -122,10 +122,16 @@ export const TutorDashboard = async () => {
         .in('subject_id', subjectIdsFromAssignments)
         .eq('status', 'active');
 
-      allStudents = enrollments?.map((e: any) => ({
-        ...e.student,
-        subjects: [(e.subject as any)?.title || (e.subject as any)?.code || 'Unknown']
-      })).filter(Boolean) || [];
+      allStudents = enrollments?.map((e: unknown) => {
+        const enrollment = e as { 
+          student: { id: string; first_name: string; last_name: string; role: string }; 
+          subject: { title?: string; code?: string } | null 
+        };
+        return {
+          ...enrollment.student,
+          subjects: [enrollment.subject?.title || enrollment.subject?.code || 'Unknown']
+        };
+      }).filter(Boolean) || [];
 
       // Remove duplicates and aggregate subjects
       const studentMap = new Map();
@@ -209,7 +215,7 @@ export const TutorDashboard = async () => {
           <StatCard
             title="Subjects Teaching"
             value={subjects.length}
-            description={subjects.length > 0 ? subjects.map((s: any) => s?.code).join(', ') : 'No subjects'}
+            description={subjects.length > 0 ? subjects.map((s: unknown) => (s as { code?: string } | null)?.code).join(', ') : 'No subjects'}
             iconName="BookOpen"
             color="primary"
           />

@@ -285,7 +285,7 @@ export function UserList({
                         {getUserSubjects(user).length === 0 ? (
                           <span className="text-xs text-muted-foreground">No subjects assigned</span>
                         ) : (
-                          getUserSubjects(user).map((subject: any) => (
+                          getUserSubjects(user).map((subject: { id: string; code: string; is_lead_tutor?: boolean }) => (
                             <Badge 
                               key={subject.id} 
                               variant="outline" 

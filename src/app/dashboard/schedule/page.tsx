@@ -34,7 +34,7 @@ export default async function SchedulePage() {
   }
 
   let userRole: string = 'student' // Default fallback
-  let userId = session.user.id
+  const userId = session.user.id
 
   // Decode JWT to extract user role
   if (session.access_token) {

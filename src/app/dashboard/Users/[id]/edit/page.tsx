@@ -41,7 +41,7 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
   }
 
   let userRole: string = 'student' // Default fallback
-  let currentUserId = session.user.id
+  const currentUserId = session.user.id
 
   // Decode JWT to extract user role
   if (session.access_token) {

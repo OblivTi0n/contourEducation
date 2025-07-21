@@ -17,7 +17,6 @@ export default function Login() {
   const [message, setMessage] = useState('')
   const [showTestCreds, setShowTestCreds] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
 
   // Test credentials for easy testing
@@ -65,8 +64,8 @@ export default function Login() {
           window.location.href = '/dashboard' // Fallback
         }
       }
-    } catch (error: any) {
-      setMessage(error.message)
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setLoading(false)
     }

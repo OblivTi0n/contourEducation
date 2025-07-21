@@ -13,11 +13,8 @@ import {
   Phone,
   School,
   GraduationCap,
-  Calendar,
-  MapPin,
   Edit,
   ArrowLeft,
-  Users,
   Briefcase,
   BookOpen,
   Crown,
@@ -60,7 +57,7 @@ function InfoItem({
   label, 
   value 
 }: { 
-  icon: React.ComponentType<any>, 
+  icon: React.ComponentType<{ className?: string }>, 
   label: string, 
   value: string | number | null | undefined 
 }) {
@@ -88,7 +85,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   }
 
   let userRole: string = 'student' // Default fallback
-  let currentUserId = session.user.id
+  const currentUserId = session.user.id
 
   // Decode JWT to extract user role
   if (session.access_token) {

@@ -139,8 +139,8 @@ export async function fetchLessons(
   const lessonIds = lessonsData.map(lesson => lesson.id)
 
   // Get tutors and students separately to avoid RLS circular references
-  let tutorsData: any[] = []
-  let studentsData: any[] = []
+  let tutorsData: Array<{ lesson_id: string; tutor_id: string; profile?: { id: string; first_name: string; last_name: string } }> = []
+  let studentsData: Array<{ lesson_id: string; student_id: string; profile?: { id: string; first_name: string; last_name: string } }> = []
 
   try {
     // Fetch tutors for these lessons
@@ -188,7 +188,7 @@ export async function fetchLessons(
   // Admins see all lessons (no filtering)
 
   // Transform the data to include tutors and students
-  const lessons: Lesson[] = filteredLessons.map((lesson: any) => ({
+  const lessons: Lesson[] = filteredLessons.map((lesson: Record<string, unknown>) => ({
     ...lesson,
     tutors: tutorsData
       .filter(t => t.lesson_id === lesson.id)
@@ -237,8 +237,8 @@ export async function fetchLessonById(id: string): Promise<Lesson | null> {
   }
 
   // Fetch tutors and students separately to avoid RLS issues
-  let tutors: any[] = []
-  let students: any[] = []
+  let tutors: Array<{ id: string; first_name: string; last_name: string }> = []
+  let students: Array<{ id: string; first_name: string; last_name: string }> = []
 
   try {
     // Fetch tutors for this lesson

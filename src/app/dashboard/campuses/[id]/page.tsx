@@ -31,7 +31,7 @@ function InfoItem({
   value,
   href
 }: { 
-  icon: React.ComponentType<any>, 
+  icon: React.ComponentType<{ className?: string }>, 
   label: string, 
   value: string | null | undefined,
   href?: string

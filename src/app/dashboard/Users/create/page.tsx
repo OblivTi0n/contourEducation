@@ -33,7 +33,7 @@ export default async function CreateUserPage() {
   }
 
   let userRole: string = 'student' // Default fallback
-  let currentUserId = session.user.id
+  const currentUserId = session.user.id
 
   // Decode JWT to extract user role
   if (session.access_token) {

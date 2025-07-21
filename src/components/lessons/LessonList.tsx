@@ -334,7 +334,7 @@ export const LessonList: React.FC<LessonListProps> = ({
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Are you sure you want to delete "{lesson.title}"? This action cannot be undone.
+                                          Are you sure you want to delete &quot;{lesson.title}&quot;? This action cannot be undone.
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>

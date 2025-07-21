@@ -26,7 +26,7 @@ export const Navigation = () => {
   const [navigationItems, setNavigationItems] = useState<Array<{
     label: string;
     href: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
   }>>([]);
   const { profile, signOut, loading } = useAuth();
 

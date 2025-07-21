@@ -225,15 +225,15 @@ export const SubjectForm = ({ subject, isEdit = false }: SubjectFormProps) => {
           <div>
             <h4 className="font-medium mb-1">Subject Code Format</h4>
             <p className="text-sm text-muted-foreground">
-              Use standard VCE subject codes like "MATH3/4", "CHEM1/2", "ENG3/4". 
+              Use standard VCE subject codes like &quot;MATH3/4&quot;, &quot;CHEM1/2&quot;, &quot;ENG3/4&quot;. 
               Keep them short and consistent with VCE naming conventions.
             </p>
           </div>
           <div>
             <h4 className="font-medium mb-1">Subject Title</h4>
             <p className="text-sm text-muted-foreground">
-              Use the full official name of the subject. For example: "VCE Mathematics Methods 3/4", 
-              "VCE Chemistry 1/2", "VCE English 3/4".
+              Use the full official name of the subject. For example: &quot;VCE Mathematics Methods 3/4&quot;, 
+              &quot;VCE Chemistry 1/2&quot;, &quot;VCE English 3/4&quot;.
             </p>
           </div>
           <div>

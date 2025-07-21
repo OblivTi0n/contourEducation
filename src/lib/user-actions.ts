@@ -21,7 +21,7 @@ export interface UserProfile {
   parent_guardian_phone: string | null
   job_title: string | null
   bio: string | null
-  qualifications: any | null
+  qualifications: Record<string, unknown> | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
   // Add subject assignment fields
@@ -54,7 +54,7 @@ export interface CreateUserData {
   parent_guardian_phone?: string
   job_title?: string
   bio?: string
-  qualifications?: any
+  qualifications?: Record<string, unknown>
   emergency_contact_name?: string
   emergency_contact_phone?: string
 }
@@ -72,7 +72,7 @@ export interface UpdateUserData {
   parent_guardian_phone?: string
   job_title?: string
   bio?: string
-  qualifications?: any
+  qualifications?: Record<string, unknown>
   emergency_contact_name?: string
   emergency_contact_phone?: string
 }

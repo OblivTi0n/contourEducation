@@ -92,9 +92,9 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
       
       // Extract subjects from the tutor_subjects relation and ensure proper typing
       const subjects = tutorSubjects
-        ?.map((ts: any) => ts.subject)
-        .filter((subject: any) => subject && subject.id && subject.code && subject.title)
-        .sort((a: any, b: any) => a.code.localeCompare(b.code)) || []
+        ?.map((ts: { subject: { id: string; code: string; title: string } }) => ts.subject)
+        .filter((subject: { id: string; code: string; title: string } | null) => subject && subject.id && subject.code && subject.title)
+        .sort((a: { code: string }, b: { code: string }) => a.code.localeCompare(b.code)) || []
       
       subjectsResult = { data: subjects, error: null }
     } else {
@@ -148,7 +148,7 @@ export default async function EditLessonPage({ params }: EditLessonPageProps) {
       getEnrolledStudents(), // Get all students initially, will be filtered by subject in form
     ])
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: Record<string, unknown>) => {
       'use server'
       try {
         await updateLesson(data)
